@@ -45,13 +45,6 @@ bool LocalPlayer::canWalk(const bool ignoreLock)
     if (isWalkLocked() && !ignoreLock)
         return false;
 
-    // Ensure movement synchronization with the server
-    if (g_game.getWalkMaxSteps() > 0) {
-        if (m_preWalks.size() > g_game.getWalkMaxSteps())
-            return false;
-    } else if (getPosition() != getServerPosition())
-        return false;
-
     // Handle ongoing movement cases
     if (isWalking()) {
         if (isAutoWalking()) return true;  // Allow auto-walking
@@ -59,7 +52,7 @@ bool LocalPlayer::canWalk(const bool ignoreLock)
     }
 
     // allow only if walk done, ex. diagonals may need additional ticks before taking another step
-    return m_walkTimer.ticksElapsed() >= getStepDuration();
+    return m_walkTimer.ticksElapsed() >= (getStepDuration() - 9);
 }
 
 void LocalPlayer::walk(const Position& oldPos, const Position& newPos)
@@ -239,8 +232,6 @@ void LocalPlayer::terminateWalk()
 
 void LocalPlayer::onPositionChange(const Position& newPos, const Position& oldPos)
 {
-    if (isPreWalking())
-        return;
 
     Creature::onPositionChange(newPos, oldPos);
 
@@ -248,6 +239,10 @@ void LocalPlayer::onPositionChange(const Position& newPos, const Position& oldPo
         stopAutoWalk();
     else if (m_autoWalkDestination.isValid() && newPos == m_lastAutoWalkPosition)
         autoWalk(m_autoWalkDestination);
+
+    if (newPos.z != oldPos.z) {
+        m_walkTimer.update(-getStepDuration());
+    }
 
     m_serverWalk = false;
 }
@@ -259,6 +254,9 @@ void LocalPlayer::setStates(const uint64_t states)
 
     const uint64_t oldStates = m_states;
     m_states = states;
+
+    if (isParalyzed())
+        m_walkTimer.update(-getStepDuration());
 
     if (isParalyzed() && isWalking() && m_serverWalk)
         updateWalk();

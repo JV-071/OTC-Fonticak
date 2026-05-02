@@ -64,20 +64,13 @@ Creature::~Creature() {
     g_stats.removeCreature();
 }
 
-bool Creature::isHidden() const {
-    if (m_type == Proto::CreatureTypeHidden)
-        return true;
-    // Old protocol (< 1273): healthPercent=0 means health is hidden, not that the creature is dead
-    return g_game.getClientVersion() < 1273 && m_healthPercent == 0;
-}
-
 void Creature::onCreate() {
     callLuaField("onCreate");
 }
 
 void Creature::draw(const Point& dest, const bool drawThings, LightView* /*lightView*/)
 {
-    if (!canBeSeen() || !canDraw() || (isDead() && !isHidden()))
+    if (!canBeSeen() || !canDraw() || isDead())
         return;
 
     if (drawThings) {
@@ -168,7 +161,7 @@ void Creature::drawInformation(const MapPosInfo& mapRect, const Point& dest, con
         DEFAULT_COLOR(96, 96, 96),
         NPC_COLOR(0x66, 0xcc, 0xff);
 
-    if (isHidden() || isDead() || !canBeSeen() || !(drawFlags & Otc::DrawCreatureInfo) || !mapRect.isInRange(getPosition()))
+    if (isDead() || !canBeSeen() || !(drawFlags & Otc::DrawCreatureInfo) || !mapRect.isInRange(getPosition()))
         return;
 
     if (g_gameConfig.isDrawingInformationByWidget()) {
@@ -780,7 +773,7 @@ void Creature::nextWalkUpdate()
         self->nextWalkUpdate();
     };
 
-    m_walkUpdateEvent = isCameraFollowing() ? g_dispatcher.addEvent(action) : g_dispatcher.scheduleEvent(action, m_stepCache.walkDuration);
+    m_walkUpdateEvent = g_dispatcher.scheduleEvent(action, m_stepCache.walkDuration);
 }
 
 void Creature::updateWalk()
@@ -1119,7 +1112,7 @@ uint16_t Creature::getStepDuration(const bool ignoreDiagonal, const Otc::Directi
             stepDuration = ((stepDuration + serverBeat - 1) / serverBeat) * serverBeat;
         }
 
-        m_stepCache.duration = stepDuration;
+        m_stepCache.duration = stepDuration + 10;
 
         m_stepCache.walkDuration = std::min<int>(stepDuration / g_gameConfig.getSpriteSize(), DrawPool::FPS60);
 
@@ -1130,11 +1123,6 @@ uint16_t Creature::getStepDuration(const bool ignoreDiagonal, const Otc::Directi
     }
 
     auto duration = ignoreDiagonal ? m_stepCache.duration : m_stepCache.getDuration(m_lastStepDirection);
-
-    if (isCameraFollowing() && isLocalPlayer()) {
-        const auto& localPlayer = static_self_cast<LocalPlayer>();
-        duration += 10 * std::max<int>(1, localPlayer->getPreWalkingSize());
-    }
 
     return duration;
 }
@@ -1212,10 +1200,7 @@ uint16_t Creature::getCurrentAnimationPhase(const bool mount)
         const long long animationPeriod = static_cast<long long>(ticksPerFrame) * animationPhases;
         if (animationPeriod <= 0) return 0;
 
-        // When a static idle frame group exists (no idleAnimator but idle sprites are present),
-        // skip over the idle phase(s) so animateAlways only cycles through the moving frames.
-        const int idlePhases = thingType->getIdleAnimationPhases();
-        return static_cast<uint16_t>(idlePhases + (g_clock.millis() % animationPeriod) / ticksPerFrame);
+        return static_cast<uint16_t>((g_clock.millis() % animationPeriod) / ticksPerFrame);
     }
 
     return isDisabledWalkAnimation() ? 0 : m_walkAnimationPhase;

@@ -57,8 +57,26 @@ controller:registerEvents(g_game, {
             g_game.enableFeature(GameCreatureEmblems)
         end
 
-        if version >= 860 then
+        if(version >= 860) then
             g_game.enableFeature(GameAttackSeq)
+            g_game.enableFeature(GameBot)
+            g_game.enableFeature(GameExtendedOpcode)       
+            g_game.enableFeature(GameSkillsBase)
+            g_game.enableFeature(GamePlayerMounts)
+            g_game.enableFeature(GameMagicEffectU16)
+            g_game.enableFeature(GameDistanceEffectU16)
+            g_game.enableFeature(GameDoubleHealth)
+            g_game.enableFeature(GameOfflineTrainingTime)
+            g_game.enableFeature(GameBaseSkillU16)
+            g_game.enableFeature(GameAdditionalSkills)
+            g_game.enableFeature(GameIdleAnimations)
+            g_game.enableFeature(GameEnhancedAnimations)
+            g_game.enableFeature(GameExtendedClientPing)
+            g_game.enableFeature(GameSpritesU32)
+            g_game.enableFeature(GameDoublePlayerGoodsMoney) 
+            g_game.enableFeature(GameCreatureIcons)
+            g_game.enableFeature(GamePurseSlot)
+
         end
 
         if version >= 862 then
