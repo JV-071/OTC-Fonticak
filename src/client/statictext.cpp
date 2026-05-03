@@ -37,17 +37,16 @@ StaticText::StaticText()
 
 void StaticText::drawText(const Point& dest, const Rect& parentRect)
 {
-    const auto& textSize = m_cachedText.getTextSize();
+    Size textSize = m_cachedText.getTextSize();
+    // OTC-Fonticak base offset is Point(20, 5), but their MapView adds Point(8, 0) before calling drawText.
+    // Since this client doesn't add the 8 in MapView, we apply the total +28 X offset here.
+    Rect rect = Rect(dest.x + 28 - (textSize.width() / 2), dest.y + 5 - textSize.height(), textSize);
+    rect.bind(parentRect);
 
-    auto rect = Rect(dest - Point(textSize.width() / 2, textSize.height()) + (Point(20, 5) / g_app.getStaticTextScale()), textSize);
-    if (g_app.getStaticTextScale() == DEFAULT_DISPLAY_DENSITY)
-        rect.bind(parentRect);
-
-    // draw only if the real center is not too far from the parent center, or its a yell
-    //if(g_map.isAwareOfPosition(m_position) || isYell()) {
     m_cachedText.draw(rect, m_color);
-    //}
 }
+
+
 
 void StaticText::setText(const std::string_view text) { m_cachedText.setText(text); }
 void StaticText::setFont(const std::string_view fontName) { m_cachedText.setFont(g_fonts.getFont(fontName)); }

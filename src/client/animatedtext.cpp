@@ -43,7 +43,7 @@ void AnimatedText::drawText(const Point& dest, const Rect& visibleRect)
     const float t = m_animationTimer.ticksElapsed();
 
     Point p = dest;
-    p.x += (24.f / g_app.getAnimatedTextScale() - (textSize.width() / 2.f));
+    p.x += (35.f / g_app.getAnimatedTextScale() - (textSize.width() / 2.f));
     if (g_game.getFeature(Otc::GameDiagonalAnimatedText)) {
         p.x -= (4 * g_app.getAnimatedTextScale() * t / tf) + (8 * g_app.getAnimatedTextScale() * t * t / tftf);
     }
