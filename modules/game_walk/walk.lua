@@ -109,7 +109,11 @@ local function walk(dir)
     lastWalkDir = dir
 
     if g_game.getFeature(GameAllowPreWalk) then
-        local toPos = Position.translatedToDirection(player:getPosition(), dir)
+        local pos = player:getPosition()
+        if not pos then
+            return
+        end
+        local toPos = Position.translatedToDirection(pos, dir)
         local toTile = g_map.getTile(toPos)
         if not toTile or not toTile:isWalkable() then
             if not canChangeFloor(toPos, 1) and not canChangeFloor(toPos, -1) then

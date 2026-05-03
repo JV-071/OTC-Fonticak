@@ -63,6 +63,9 @@ function Position.translated(pos, dx, dy, dz)
 end
 
 function Position.translatedToDirection(pos, direction)
+    if not pos then
+        return nil
+    end
     local newPos = {
         x = pos.x,
         y = pos.y,
