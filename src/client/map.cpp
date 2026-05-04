@@ -222,28 +222,38 @@ void Map::addAnimatedText(const AnimatedTextPtr& txt, const Position& pos) {
         return;
 
     g_textDispatcher.addEvent([=, this] {
-        // this code will stack animated texts of the same color
+        std::vector<AnimatedTextPtr> activeInPos;
         bool merged = false;
+
         for (const auto& other : m_animatedTexts) {
-            if (other->getPosition() == pos && other->getTimer().ticksElapsed() < g_gameConfig.getAnimatedTextDuration() / 2.0) {
+            if (other->getPosition() == pos && other->getTimer().ticksElapsed() < g_gameConfig.getAnimatedTextDuration() * 0.7) {
                 if (other->merge(txt)) {
                     merged = true;
                     break;
                 }
-
-                if (other->getColor() != txt->getColor()) {
-                    other->setHasCollision(true);
-                    txt->setHasCollision(true);
-                }
+                activeInPos.push_back(other);
             }
         }
 
         if (!merged) {
             m_animatedTexts.emplace_back(txt);
+            activeInPos.push_back(txt);
+            txt->setPosition(pos);
+            txt->onAppear();
         }
 
-        txt->setPosition(pos);
-        txt->onAppear();
+        // Recalculate offsets for all texts in this position
+        if (activeInPos.size() > 1) {
+            const float spacing = 22.0f; // Horizontal space between texts
+            for (size_t i = 0; i < activeInPos.size(); ++i) {
+                // Newest is at the end of activeInPos, it should have offset 0.
+                // Older ones get pushed to the right (positive offset).
+                int pushIndex = activeInPos.size() - 1 - i;
+                activeInPos[i]->setOffset(Point(static_cast<int>(pushIndex * spacing), 0));
+            }
+        } else if (!merged) {
+            txt->setOffset(Point(0, 0));
+        }
     });
 }
 

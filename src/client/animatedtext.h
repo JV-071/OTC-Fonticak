@@ -44,11 +44,11 @@ public:
 
     void setColor(const int color) { m_color = Color::from8bit(color); }
     void setText(const std::string_view text) { m_cachedText.setText(text); }
-    void setOffset(const Point& offset) { m_offset = offset; }
+    void setOffset(const Point& offset) { m_targetOffset = PointF(offset.x, offset.y); if(m_offset.isNull()) m_offset = m_targetOffset; }
 
     Color getColor() { return m_color; }
     const CachedText& getCachedText() const { return m_cachedText; }
-    Point getOffset() { return m_offset; }
+    Point getOffset() { return Point(m_offset.x, m_offset.y); }
     Timer getTimer() const { return m_animationTimer; }
     std::string getText() { return m_cachedText.getText(); }
 
@@ -65,7 +65,8 @@ private:
     Color m_color{ Color::white };
     Timer m_animationTimer;
     CachedText m_cachedText;
-    Point m_offset;
+    PointF m_offset;
+    PointF m_targetOffset;
     Position m_position;
     bool m_hasCollision{ false };
 };

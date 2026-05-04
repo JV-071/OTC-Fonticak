@@ -51,37 +51,18 @@ void AnimatedText::drawText(const Point& dest, const Rect& visibleRect)
 
     p.y += ((8.f / g_app.getAnimatedTextScale()) + ((-48.f * g_app.getAnimatedTextScale() * t) / tf));
 
-    const uint8_t color8 = Color::to8bit(m_color);
-    float xOffset = 0.f;
-    switch (color8) {
-        case 180: // Physical (Red)
-        case 215: // Physical (White)
-            xOffset = 22.f;
-            break;
-        case 144: // Fire (Orange)
-        case 198:
-            xOffset = -22.f;
-            break;
-        case 172: // Energy (Purple)
-            xOffset = 32.f;
-            break;
-        case 30:  // Earth (Green)
-            xOffset = -32.f;
-            break;
-        case 45:  // Death (Dark Red)
-        case 112: // Death (Grapes)
-        case 108:
-            xOffset = 0.f;
-            break;
-        default:
-            xOffset = 0.f;
-            break;
+    // Smooth movement interpolation
+    if (m_offset != m_targetOffset) {
+        m_offset.x += (m_targetOffset.x - m_offset.x) * 0.15f;
+        m_offset.y += (m_targetOffset.y - m_offset.y) * 0.15f;
+        
+        // Snap to target if very close
+        if (std::abs(m_offset.x - m_targetOffset.x) < 0.1f) m_offset.x = m_targetOffset.x;
+        if (std::abs(m_offset.y - m_targetOffset.y) < 0.1f) m_offset.y = m_targetOffset.y;
     }
 
-    if (m_hasCollision && xOffset != 0.f)
-        p.x += (xOffset / g_app.getAnimatedTextScale());
-
-    p += m_offset;
+    p.x += m_offset.x;
+    p.y += m_offset.y;
 
     if (!visibleRect.contains({ p, textSize }))
         return;
