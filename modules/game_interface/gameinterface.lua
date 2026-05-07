@@ -935,6 +935,13 @@ end
 function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, useThing, creatureThing, attackCreature)
     local keyboardModifiers = g_keyboard.getModifiers()
 
+    -- Look using Left + Right click
+    if lookThing and ((g_mouse.isPressed(MouseLeftButton) and mouseButton == MouseRightButton) or
+            (g_mouse.isPressed(MouseRightButton) and mouseButton == MouseLeftButton)) then
+        g_game.look(lookThing)
+        return true
+    end
+
     local smartLeftClick = modules.client_options.getOption('smartLeftClick')
     local classicControls = modules.client_options.getOption('classicControl')
 
@@ -1430,10 +1437,6 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
             return true
         elseif lookThing and keyboardModifiers == KeyboardShiftModifier and
             (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
-            g_game.look(lookThing)
-            return true
-        elseif lookThing and ((g_mouse.isPressed(MouseLeftButton) and mouseButton == MouseRightButton) or
-                (g_mouse.isPressed(MouseRightButton) and mouseButton == MouseLeftButton)) then
             g_game.look(lookThing)
             return true
         elseif useThing and keyboardModifiers == KeyboardCtrlModifier and
