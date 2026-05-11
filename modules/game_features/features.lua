@@ -78,7 +78,7 @@ controller:registerEvents(g_game, {
             g_game.enableFeature(GameDoublePlayerGoodsMoney) 
             g_game.enableFeature(GameCreatureIcons)
             g_game.enableFeature(GamePurseSlot)
-
+            g_game.enableFeature(GamePrey)
         end
 
         if version >= 862 then

@@ -1,157 +1,310 @@
-stashWindow = nil
-itemsPanel = nil
-radioItemSet = nil
-stashSelectAmount = nil
-searchEdit = nil
-stashItems = {}
+local window
+withdrawWindow = nil
+local protocolRegistered = false
+local currentItemData = {}
+local currentSizeLeft = 0
+local itemNameCache = {}
+local searchInput
+local OPCODE_SUPPLY_STASH_REQUEST = 0x28
+local OPCODE_SUPPLY_STASH_SEND = 0x29
+local ACTION_OPEN = 1
+local ACTION_STOW_ALL = 2
+local ACTION_WITHDRAW = 3
 
-function resetSelectAmount()
-    if stashSelectAmount then
-        stashSelectAmount:destroy()
-        stashSelectAmount = nil
-    end
+local function debugLog(message)
+	return
 end
 
-function resetItems()
-    if itemsPanel then
-        itemsPanel:destroyChildren()
-    end
-    if radioItemSet then
-        radioItemSet:destroy()
-        radioItemSet = nil
-    end
+local function sendSupplyRequest(action, itemId, count)
+	local protocolGame = g_game.getProtocolGame()
+	if not protocolGame then
+		debugLog("sendSupplyRequest aborted: protocolGame is nil (action=" .. tostring(action) .. ")")
+		return
+	end
+
+	debugLog("sendSupplyRequest action=" .. tostring(action) .. ", itemId=" .. tostring(itemId) .. ", count=" .. tostring(count))
+
+	local msg = OutputMessage.create()
+	msg:addU8(OPCODE_SUPPLY_STASH_REQUEST)
+	msg:addU8(action)
+	if action == ACTION_WITHDRAW then
+		if not itemId or not count then
+			return
+		end
+
+		msg:addU16(itemId)
+		msg:addU32(count)
+	end
+	protocolGame:send(msg)
+	debugLog("packet sent with opcode=" .. tostring(OPCODE_SUPPLY_STASH_REQUEST))
 end
 
-function prepareWithdraw(itemId, itemAmount)
-    resetSelectAmount()
-
-    stashSelectAmount = g_ui.createWidget('StashSelectAmount', rootWidget)
-    stashSelectAmount:lock()
-
-    local itembox = stashSelectAmount:getChildById('item')
-    itembox:setItemId(itemId)
-    itembox:setItemCount(itemAmount)
-
-    local scrollbar = stashSelectAmount:getChildById('countScrollBar')
-    scrollbar:setMaximum(itemAmount)
-    scrollbar:setMinimum(1)
-    scrollbar:setValue(itemAmount)
-    scrollbar.onValueChange = function(self, value)
-        itembox:setItemCount(value)
-    end
-
-    g_keyboard.bindKeyPress('Up', function()
-        scrollbar:setValue(scrollbar:getValue() + 10)
-    end, stashSelectAmount)
-    g_keyboard.bindKeyPress('Down', function()
-        scrollbar:setValue(scrollbar:getValue() - 10)
-    end, stashSelectAmount)
-    g_keyboard.bindKeyPress('Right', function()
-        scrollbar:onIncrement()
-    end, stashSelectAmount)
-    g_keyboard.bindKeyPress('Left', function()
-        scrollbar:onDecrement()
-    end, stashSelectAmount)
-    g_keyboard.bindKeyPress('PageUp', function()
-        scrollbar:setValue(scrollbar:getMaximum())
-    end, stashSelectAmount)
-    g_keyboard.bindKeyPress('PageDown', function()
-        scrollbar:setValue(scrollbar:getMinimum())
-    end, stashSelectAmount)
-
-    local okButton = stashSelectAmount:getChildById('buttonOk')
-    local withdrawFunc = function()
-        g_game.stashWithdraw(itemId, itembox:getItemCount(), 1)
-        stashSelectAmount:unlock()
-        resetSelectAmount()
-    end
-    local cancelButton = stashSelectAmount:getChildById('buttonCancel')
-    local cancelFunc = function()
-        stashSelectAmount:unlock()
-        resetSelectAmount()
-    end
-
-    stashSelectAmount.onEnter = withdrawFunc
-    stashSelectAmount.onEscape = cancelFunc
-
-    okButton.onClick = withdrawFunc
-    cancelButton.onClick = cancelFunc
+local function requestOpen()
+	debugLog("requestOpen called")
+	sendSupplyRequest(ACTION_OPEN)
 end
 
-function renderItems()
-    if not g_game.isOnline() then
-        return
-    end
-    resetItems()
-    radioItemSet = UIRadioGroup.create()
-    local searchFilter = searchEdit:getText()
-    for itemId, amount in pairs(stashItems) do
-        local thingType = g_things.getThingType(itemId, 0)
-        if thingType then
-            local itemName = thingType:getName()
-            if not itemName or itemName:lower():find(searchFilter) then
-                local item = Item.create(itemId)
-                item:setCount(amount)
-                local itemBox = g_ui.createWidget('StashItemBox', itemsPanel)
-                itemBox:getChildById('item'):setItem(item)
-                radioItemSet:addWidget(itemBox)
-                if itemName then
-                    itemBox:setTooltip(itemName)
-                else
-                    itemBox:setTooltip("Loading...")
-                end
-                g_mouse.bindPress(itemBox, function()
-                    prepareWithdraw(itemId, amount)
-                end, MouseLeftButton)
+local function showWindow()
+	debugLog("showWindow")
+	window:show()
+	window:raise()
+	window:focus()
+	modules.game_interface.getRootPanel():focus()
+	window:lock()
+end
+
+local function hideWindow()
+	debugLog("hideWindow")
+	window:hide()
+	window:unlock()
+	modules.game_interface.getRootPanel():focus()
+end
+
+local function registerProtocol()
+	if protocolRegistered then
+		return
+	end
+
+	debugLog("registerProtocol: registering opcode " .. tostring(OPCODE_SUPPLY_STASH_SEND))
+	ProtocolGame.unregisterOpcode(OPCODE_SUPPLY_STASH_SEND)
+	ProtocolGame.registerOpcode(OPCODE_SUPPLY_STASH_SEND,
+        function(protocol, msg)
+			local itemData = {}
+			local count = msg:getU16()
+			debugLog("opcode " .. tostring(OPCODE_SUPPLY_STASH_SEND) .. " received, item count=" .. tostring(count))
+            for i = 1, count do
+				table.insert(itemData, {msg:getU16(), msg:getU32()})
             end
+
+			local sizeLeft = msg:getU16()
+			debugLog("setup called with sizeLeft=" .. tostring(sizeLeft))
+			setup(itemData, sizeLeft)
         end
-    end
-    if stashWindow:isHidden() then
-        stashWindow:show()
-        stashWindow:lock()
-    end
+    )
+	protocolRegistered = true
 end
 
-function onSupplyStashEnter(payload)
-    stashItems = {}
-    for i = 1, #payload do
-        local itemId = payload[i][1]
-        local amount = payload[i][2]
-        stashItems[itemId] = amount
-    end
-    renderItems()
+local function unregisterProtocol()
+	if not protocolRegistered then
+		return
+	end
+
+	debugLog("unregisterProtocol: unregistering opcode " .. tostring(OPCODE_SUPPLY_STASH_SEND))
+	ProtocolGame.unregisterOpcode(OPCODE_SUPPLY_STASH_SEND)
+	protocolRegistered = false
 end
 
-function onSupplyStashClose()
-    stashItems = {}
-    resetItems()
-    resetSelectAmount()
-    if searchEdit then
-        searchEdit:setText('')
+function init()	
+	debugLog("init start")
+	
+	-- Main stash window
+	window 	   = g_ui.displayUI('game_stash')
+	debugLog("UI loaded: game_stash")
+	freeSlots = window:recursiveGetChildById('freeSlots')
+	
+	-- Selecter for charms
+	itemsContainer = window:recursiveGetChildById('itemsContainer')
+	supplyItems = itemsContainer:recursiveGetChildById('supplyItems')
+	searchInput = window:recursiveGetChildById('searchInput')
+	if searchInput then
+		searchInput.onTextChange = function()
+			refreshItemList()
+		end
+	end
+	debugLog("UI refs resolved: freeSlots=" .. tostring(freeSlots ~= nil) .. ", itemsContainer=" .. tostring(itemsContainer ~= nil) .. ", supplyItems=" .. tostring(supplyItems ~= nil))
+	
+	connect(
+        g_game,
+        {
+            onEnterGame = registerProtocol,
+            onPendingGame = registerProtocol,
+            onGameStart = registerProtocol,
+            onGameEnd = unregisterProtocol
+        }
+    )
+	
+	createwithdrawWindow()
+	debugLog("withdraw window created")
+	
+    if g_game.isOnline() then
+		debugLog("game is online during init; registering protocol now")
+        registerProtocol()
+	else
+		debugLog("game offline during init; waiting on onEnterGame/onPendingGame/onGameStart")
     end
-    if not stashWindow:isHidden() then
-        stashWindow:hide()
-        stashWindow:unlock()
-        modules.game_interface.getRootPanel():focus()
-    end
-end
-
-function init()
-    g_ui.importStyle('game_stash')
-    connect(g_game, {
-        onSupplyStashEnter = onSupplyStashEnter,
-        onGameEnd = onSupplyStashClose,
-    })
-    stashWindow = g_ui.createWidget('StashWindow', rootWidget)
-    stashWindow:hide()
-    itemsPanel = stashWindow:recursiveGetChildById('itemsPanel')
-    searchEdit = stashWindow:recursiveGetChildById('searchEdit')
 end
 
 function terminate()
-    disconnect(g_game, {
-        onSupplyStashEnter = onSupplyStashEnter,
-        onGameEnd = onSupplyStashClose,
-    })
-    stashWindow:destroy()
+	debugLog("terminate")
+	disconnect(
+        g_game,
+        {
+            onEnterGame = registerProtocol,
+            onPendingGame = registerProtocol,
+            onGameStart = registerProtocol,
+            onGameEnd = unregisterProtocol
+        }
+    )
+
+    unregisterProtocol()
+	window:destroy()
+	withdrawWindow:destroy()
+end
+
+function toggle()
+	debugLog("toggle called; window visible=" .. tostring(window and window:isVisible() or false))
+	if window:isVisible() then
+		hideWindow()
+	else
+		requestOpen()
+	end
+end
+
+function createwithdrawWindow()
+	if withdrawWindow then return end
+	withdrawWindow = g_ui.displayUI('withdraw')
+	withdrawWindow:hide()
+	debugLog("withdraw window UI loaded")
+end
+
+function withdrawHide()
+	withdrawWindow:hide()
+end	
+
+function placeholder()
+	refreshItemList()
+end
+
+function stowAll()
+	debugLog("stowAll clicked")
+	sendSupplyRequest(ACTION_STOW_ALL)
+end
+
+function emptyItemList()
+	while supplyItems:getChildCount() > 0 do
+		local child = supplyItems:getLastChild()
+		child:destroy()
+	end
+end
+
+local function getItemDisplayName(itemId)
+	itemId = tonumber(itemId) or 0
+	if itemNameCache[itemId] then
+		return itemNameCache[itemId]
+	end
+
+	local name
+	if Item and Item.create then
+		local okItem, item = pcall(function()
+			return Item.create(itemId)
+		end)
+		if okItem and item then
+			local okMarket, marketData = pcall(function()
+				return item:getMarketData()
+			end)
+			if okMarket and marketData and marketData.name and marketData.name ~= "" then
+				name = marketData.name
+			end
+
+			if not name and item.getName then
+				local okName, itemName = pcall(function()
+					return item:getName()
+				end)
+				if okName and itemName and itemName ~= "" then
+					name = itemName
+				end
+			end
+		end
+	end
+
+	name = name or ("Item " .. tostring(itemId))
+	itemNameCache[itemId] = name
+	return name
+end
+
+local function itemMatchesSearch(itemId, name)
+	if not searchInput then
+		return true
+	end
+
+	local text = searchInput:getText()
+	if not text or text == "" then
+		return true
+	end
+
+	text = text:lower()
+	return name:lower():find(text, 1, true) ~= nil or tostring(itemId):find(text, 1, true) ~= nil
+end
+
+local function openWithdrawWindow(itemId, amount)
+	hideWindow()
+	withdrawWindow:show()
+	withdrawWindow:raise()
+	withdrawWindow:focus()
+	withdrawWindow:unlock()
+	modules.game_interface.getRootPanel():focus()
+
+	withdrawWindow.item:setItemId(itemId)
+	withdrawWindow.count:setText(1)
+	withdrawWindow.countScrollBar:setMinimum(1)
+	withdrawWindow.countScrollBar:setMaximum(amount)
+	withdrawWindow.countScrollBar:setValue(1)
+	withdrawWindow.countScrollBar.onValueChange = function(widget, value)
+		withdrawWindow.count:setText(value)
+	end
+
+	local buttonCancel = withdrawWindow:recursiveGetChildById('buttonCancel')
+	buttonCancel.onClick = function(self)
+		withdrawHide()
+		requestOpen()
+	end
+
+	local okButton = withdrawWindow:recursiveGetChildById('buttonOk')
+	okButton.onClick = function(self)
+		local count = tonumber(withdrawWindow:recursiveGetChildById('count'):getText()) or 0
+		sendSupplyRequest(ACTION_WITHDRAW, itemId, count)
+		withdrawHide()
+		modules.game_interface.getRootPanel():focus()
+	end
+end
+
+function refreshItemList()
+	if not supplyItems then
+		return
+	end
+
+	emptyItemList()
+	for i = 1, #currentItemData do
+		local itemId = currentItemData[i][1]
+		local amount = currentItemData[i][2]
+		local name = getItemDisplayName(itemId)
+		if itemMatchesSearch(itemId, name) then
+			local row = g_ui.createWidget('StashItem', supplyItems)
+			row.index = i
+			row:setId("stashItem" .. i)
+			row.categoryId = i
+			row:setItemId(itemId)
+			row:setTooltip(name)
+
+			local countText = row:recursiveGetChildById('count')
+			countText:setText(tostring(amount))
+
+			row.onClick = function(self)
+				openWithdrawWindow(itemId, amount)
+			end
+		end
+	end
+
+	if freeSlots then
+		freeSlots:setText("Free slots: " .. currentSizeLeft)
+	end
+end
+
+function setup(itemData, sizeLeft)
+	itemData = itemData or {}
+	debugLog("setup start: items=" .. tostring(#itemData) .. ", sizeLeft=" .. tostring(sizeLeft))
+	showWindow()
+	currentItemData = itemData
+	currentSizeLeft = sizeLeft or 0
+	refreshItemList()
 end

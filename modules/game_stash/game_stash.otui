@@ -1,149 +1,156 @@
-StashWindow < MainWindow
-  id: stashWindow
+SupplyStashWindow < UIWindow
+  anchors.centerIn: parent
+  font: verdana-11px-antialised
+  opacity: 1
+  color: #dfdfdf
+  text-offset: 0 6
+  text-align: top
+  image-source: assets/window
+  image-border: 6
+  image-border-top: 27
+  padding-top: 36
+  padding-left: 16
+  padding-right: 16
+  padding-bottom: 16
+  border-color: #000000
+  border-width-top: 1
+  border-width-left: 1
+  border-width-bottom: 1
+  border-width-right: 1
+
+  $disabled:
+    color: #dfdfdf88
+
+StashItem < UIItem
+  image-source: /images/ui/item/none
+  size: 32 32
+  
+  Label
+    id: count
+    width: 50
+    anchors.bottom: parent.bottom
+    anchors.right: parent.right
+    margin-right: 2
+    text-align: right
+    font: verdana-11px-rounded
+
+  $disabled:
+    image-source: assets/emptySlot
+
+SupplyStashWindow
+  size: 604 435
   !text: tr('Supply Stash')
-  size: 700 530
+  color: #909090
+  visible: false
+  @onEscape: toggle()
 
-  @onEscape: onSupplyStashClose()
-
-  // Main Panel Window
-
-  Panel
-    id: supraPanel
-    width: 164
-    height: 25
+  ComboBox
+    id: itemTypes
+    size: 190 20
     anchors.top: parent.top
     anchors.left: parent.left
+    text-align: center
+    @onOptionChange: placeholder()
+    @onSetup: |
+      self:addOption("Show all")
+      self:addOption("Show food")
 
-  Panel
-    id: mainTabContent
-    anchors.top: prev.bottom
-    anchors.left: parent.left
-    anchors.right: parent.right
+  ComboBox
+    id: itemTypes
+    size: 180 20
+    anchors.verticalCenter: prev.verticalCenter
+    anchors.left: prev.right
+    margin-left: 7
+    text-align: center
+    @onOptionChange: placeholder()
+    @onSetup: |
+      self:addOption("No trader selected")
+
+  Label
+    text: Search:
+    anchors.verticalCenter: prev.verticalCenter
+    anchors.left: prev.right
+    margin-left: 7
+
+  TextEdit
+    id: searchInput
+    anchors.verticalCenter: prev.verticalCenter
+    anchors.left: prev.right
+    margin-left: 10
+    size: 138 20
+    @onEnter: placeholder()
+
+  Label
+    id: freeSlots
     anchors.bottom: parent.bottom
-    padding: 3
-    border-width: 1
-    border-color: #000000
-    margin-bottom: 20
+    anchors.left: parent.left
 
-    VerticalScrollBar
-      id: itemsPanelListScrollBar
+  UIWidget
+    id: itemsContainer
+    size: 572 318
+    opacity: 1
+    image-source: assets/black_border
+    text-align: top
+    image-border: 6
+    image-border-top: 15
+    anchors.bottom: horizontalSeparator.top
+    anchors.left: parent.left
+    margin-bottom: 7
+
+    UIScrollArea
+      id: supplyItems
       anchors.top: parent.top
       anchors.bottom: parent.bottom
-      anchors.right: parent.right
-      step: 28
-      pixels-scroll: true
-
-    ScrollablePanel
-      id: itemsPanel
       anchors.left: parent.left
-      anchors.right: prev.left
-      anchors.top: parent.top
-      anchors.bottom: parent.bottom
-      vertical-scrollbar: itemsPanelListScrollBar
+      anchors.right: parent.right
+      margin-top: 3
+      margin-bottom: 3
+      margin-left: 3
+      margin-right: 3
+      vertical-scrollbar: scrollList
+      layout: verticalBox
+      padding: 1
+      auto-focus: none
       layout:
         type: grid
-        cell-size: 36 36
+        cell-size: 32 32
         flow: true
         auto-spacing: true
 
-  Panel
-    id: findSupply
-    anchors.top: parent.top
-    anchors.horizontalCenter: parent.horizontalCenter
-    width: 164
-    height: 25
-    Label
-      !text: tr('Find') .. ':'
-      anchors.top: parent.top
-      anchors.left: parent.left
-      width: 30
-      font: verdana-11px-rounded
-      text-offset: 0 2
-
-    TextEdit
-      id: searchEdit
-      anchors.verticalCenter: prev.verticalCenter
-      anchors.left: prev.right
-      margin-left: 3
-      width: 113
-      @onTextChange: renderItems()
+    VerticalScrollBar
+      id: scrollList
+      anchors.top: supplyItems.top
+      anchors.bottom: supplyItems.bottom
+      anchors.right: supplyItems.right
+      margin-right: -2
+      margin-top: -2
+      margin-bottom: -1
+      step: 158
+      pixels-scroll: true
 
   Button
     id: closeButton
-    !text: tr('Close')
-    anchors.top: mainTabContent.bottom
-    anchors.horizontalCenter: mainTabContent.horizontalCenter
-    margin-top: 5
-    width: 110
-    @onClick: onSupplyStashClose()
-
-StashItemBox < UICheckBox
-  id: itemBox
-  border-width: 1
-  border-color: #000000
-  color: #aaaaaa
-  text-align: center
-
-  Item
-    id: item
-    phantom: true
-    virtual: true
-    text-offset: 0 22
-    text-align: right
-    anchors.top: parent.top
-    anchors.horizontalCenter: parent.horizontalCenter
-    margin: 1
-
-  $checked:
-    border-color: #ffffff
-
-  $hover !checked:
-    border-color: #aaaaaa
-
-  $disabled:
-    image-color: #ffffff88
-    color: #aaaaaa88
-
-StashSelectAmount < MainWindow
-  id: stashSelectAmount
-  !text: tr('Stash Withdraw')
-  size: 196 90
-
-  Item
-    id: item
-    anchors.left: parent.left
-    anchors.top: parent.top
-    margin-top: 2
-    margin-left: -4
-    focusable: false
-    virtual: true
-
-  HorizontalScrollBar
-    id: countScrollBar
-    anchors.left: prev.right
+    size: 43 20
+    anchors.bottom: parent.bottom
     anchors.right: parent.right
-    anchors.top: prev.top
-    margin-left: 10
-    margin-top: -2
-    focusable: false
+    !text: tr('Close')
+    font: cipsoftFont
+    margin-right: 0
+    @onClick: toggle()
 
   Button
-    id: buttonCancel
-    !text: tr('Cancel')
-    height: 20
-    anchors.left: countScrollBar.horizontalCenter
-    anchors.right: countScrollBar.right
-    anchors.top: countScrollBar.bottom
-    margin-top: 7
-    focusable: false
+    id: stowAllButton
+    size: 62 20
+    anchors.bottom: parent.bottom
+    anchors.right: closeButton.left
+    !text: tr('Stow All')
+    font: cipsoftFont
+    margin-right: 8
+    @onClick: stowAll()
 
-  Button
-    id: buttonOk
-    !text: tr('Ok')
-    height: 20
-    anchors.right: countScrollBar.horizontalCenter
-    anchors.left: countScrollBar.left
-    anchors.top: countScrollBar.bottom
-    margin-top: 7
-    margin-right: 6
-    focusable: false
+  HorizontalSeparator
+    id: horizontalSeparator
+    anchors.bottom: prev.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    margin-bottom: 12
