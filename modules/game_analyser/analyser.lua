@@ -58,7 +58,7 @@ function init()
   analyserButton = modules.game_mainpanel.addToggleButton('analyzerButton', 
                                                             tr('Open analytics selector window'),
                                                             '/images/options/analyzers',
-                                                            toggle)
+                                                            toggle, false, 1000)
 
   analyserButton:setOn(false)
     

@@ -203,8 +203,16 @@ function optionsController:onGameStart()
     modules.client_options.setupOptionsMainButton()
     local getOptionsPanel = optionsController.ui.onPanel.options
     local children = getOptionsPanel:getChildren()
+    for i, child in ipairs(children) do
+        child._stableOrder = i
+    end
     table.sort(children, function(a, b)
-        return (a.index or 1000) < (b.index or 1000)
+        local aIdx = a.index or 1000
+        local bIdx = b.index or 1000
+        if aIdx ~= bIdx then
+            return aIdx < bIdx
+        end
+        return a._stableOrder < b._stableOrder
     end)
     getOptionsPanel:reorderChildren(children)
     optionsController:scheduleEvent(function()
@@ -366,7 +374,10 @@ local function updateList(listWidget, isVisibleList)
         table.sort(displayButtons, function(a, b)
             local indexA = table.find(buttonOrder, a.id) or 999
             local indexB = table.find(buttonOrder, b.id) or 999
-            return indexA < indexB
+            if indexA ~= indexB then
+                return indexA < indexB
+            end
+            return a.id < b.id
         end)
     end
     for buttonId, item in pairs(existingItems) do
