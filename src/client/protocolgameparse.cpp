@@ -3208,14 +3208,34 @@ void ProtocolGame::parseKillTracker(const InputMessagePtr& msg)
 {
     const std::string& monsterName = msg->getString();
     const Outfit& monsterOutfit = getOutfit(msg, false);
-    const uint8_t corpseItemsSize = msg->getU8();
 
     std::vector<ItemPtr> dropItems;
+    
+    // Recursive function to parse containers as sent by the server
+    std::function<void(int)> parseContainer = [&](int depth) {
+        if (depth > 4) {
+            msg->getU8(); // Consume the 0 sent by server on max depth
+            return;
+        }
 
-    dropItems.reserve(corpseItemsSize);
-    for (auto i = 0; i < corpseItemsSize; ++i) {
-        dropItems.push_back(getItem(msg));
-    }
+        uint8_t itemCount = msg->getU8();
+        for (int i = 0; i < itemCount; ++i) {
+            uint16_t itemId = msg->getU16();
+            ItemPtr item = Item::create(itemId);
+            if (item) {
+                if (item->isContainer()) {
+                    parseContainer(depth + 1);
+                } else {
+                    item->setCount(msg->getU8());
+                    msg->getU16(); // Consume 'worth' field sent by server
+                    msg->getString(); // Consume 'itemName' string sent by server
+                }
+                dropItems.push_back(item);
+            }
+        }
+    };
+
+    parseContainer(1);
 
     // Fire the Lua callback with monster kill data
     g_lua.callGlobalField("g_game", "onKillTracker", monsterName, monsterOutfit, dropItems);
