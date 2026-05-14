@@ -349,6 +349,7 @@ private:
     void parseRestingAreaState(const InputMessagePtr& msg);
     void parseUpdateImpactTracker(const InputMessagePtr& msg);
     void parseItemsPrice(const InputMessagePtr& msg);
+    void parseItemsPriceList(const InputMessagePtr& msg);
     void parseUpdateSupplyTracker(const InputMessagePtr& msg);
     void parseUpdateLootTracker(const InputMessagePtr& msg);
     void parseBestiaryEntryChanged(const InputMessagePtr& msg);

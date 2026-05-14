@@ -165,6 +165,9 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                 case Proto::GameServerFloorDescription:
                     parseFloorDescription(msg);
                     break;
+                case Proto::GameServerItemsPriceList:
+                    parseItemsPriceList(msg);
+                    break;
                 case Proto::GameServerWeaponProficiencyExperience:
                     parseWeaponProficiencyExperience(msg);
                     break;
@@ -4819,6 +4822,21 @@ void ProtocolGame::parseItemsPrice(const InputMessagePtr& msg)
     }
 
     // TODO: implement items price usage
+}
+
+void ProtocolGame::parseItemsPriceList(const InputMessagePtr& msg)
+{
+    const uint16_t count = msg->getU16();
+    std::vector<std::tuple<uint16_t, std::string, uint32_t, uint8_t>> items;
+    for (int i = 0; i < count; ++i) {
+        const uint16_t id = msg->getU16();
+        const std::string name = msg->getString();
+        const uint32_t price = msg->getU16();
+        const uint8_t type = msg->getU8();
+        items.emplace_back(id, name, price, type);
+    }
+
+    g_lua.callGlobalField("g_game", "onItemsPriceList", items);
 }
 
 void ProtocolGame::parseUpdateSupplyTracker(const InputMessagePtr& msg)

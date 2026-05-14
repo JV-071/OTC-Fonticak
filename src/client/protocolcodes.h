@@ -81,6 +81,7 @@ namespace Proto
         GameServerDetachPaperdoll = 61,
         GameServerFeatures = 67,
         GameServerFloorDescription = 75,
+        GameServerItemsPriceList = 83,
 
         // original tibia ONLY
         GameServerWeaponProficiencyExperience = 92,

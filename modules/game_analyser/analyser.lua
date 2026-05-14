@@ -173,6 +173,7 @@ function init()
     onPartyAnalyzer = onPartyAnalyzer,
     onBossCooldown = onBossCooldown,
     onUpdateExperience = onUpdateExperience,
+    onItemsPriceList = onItemsPriceList,
   })
 
   connect(LocalPlayer, {
@@ -224,6 +225,7 @@ function terminate()
     onPartyAnalyzer = onPartyAnalyzer,
     onBossCooldown = onBossCooldown,
     onUpdateExperience = onUpdateExperience,
+    onItemsPriceList = onItemsPriceList,
   })
   disconnect(LocalPlayer, {
     onExperienceChange = onExperienceChange,
@@ -427,6 +429,21 @@ function onExperienceChange(localPlayer, value)
 end
 
 function onUpdateExperience(rawExp, exp)
+end
+
+function onItemsPriceList(items)
+  if not modules.game_cyclopedia or not modules.game_cyclopedia.itemsData then
+    return
+  end
+
+  if not modules.game_cyclopedia.itemsData["customSalePrices"] then
+    modules.game_cyclopedia.itemsData["customSalePrices"] = {}
+  end
+
+  for _, item in ipairs(items) do
+    local id, name, price, type = unpack(item)
+    modules.game_cyclopedia.itemsData["customSalePrices"][tostring(id)] = price
+  end
 end
 
 function onLootStats(item, name)
