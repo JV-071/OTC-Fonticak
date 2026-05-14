@@ -238,6 +238,8 @@ void Client::registerLuaFunctions()
     g_lua.bindSingletonFunction("g_game", "forceWalk", &Game::forceWalk, &g_game);
     g_lua.bindSingletonFunction("g_game", "turn", &Game::turn, &g_game);
     g_lua.bindSingletonFunction("g_game", "stop", &Game::stop, &g_game);
+    g_lua.bindSingletonFunction("g_game", "setScheduleLastWalk", &Game::setScheduleLastWalk, &g_game);
+    g_lua.bindSingletonFunction("g_game", "getLastWalkDir", &Game::getLastWalkDir, &g_game);
     g_lua.bindSingletonFunction("g_game", "look", &Game::look, &g_game);
     g_lua.bindSingletonFunction("g_game", "move", &Game::move, &g_game);
     g_lua.bindSingletonFunction("g_game", "moveToParentContainer", &Game::moveToParentContainer, &g_game);

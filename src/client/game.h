@@ -167,11 +167,13 @@ public:
     void safeLogout();
 
     // walk related
-    bool walk(Otc::Direction direction);
+    bool walk(Otc::Direction direction, bool isKeyDown = false);
     void autoWalk(const std::vector<Otc::Direction>& dirs, const Position& startPos);
     void forceWalk(Otc::Direction direction);
     void turn(Otc::Direction direction);
     void stop();
+    void setScheduleLastWalk(bool scheduleLastWalk) { m_scheduleLastWalk = scheduleLastWalk; }
+    Otc::Direction getLastWalkDir() { return m_lastWalkDir; }
 
     // item related
     void look(const ThingPtr& thing, bool isBattleList = false);
@@ -484,7 +486,10 @@ private:
     Otc::OperatingSystem_t m_clientCustomOs{ Otc::CLIENTOS_NONE };
     UnjustifiedPoints m_unjustifiedPoints;
     ScheduledEventPtr m_pingEvent;
+    ScheduledEventPtr m_walkEvent;
     ScheduledEventPtr m_checkConnectionEvent;
+    Otc::Direction m_lastWalkDir{ Otc::InvalidDirection };
+    Otc::Direction m_nextScheduledDir{ Otc::InvalidDirection };
 
     bool m_tileThingsLuaCallback{ false };
     bool m_online{ false };

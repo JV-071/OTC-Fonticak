@@ -1,11 +1,7 @@
 local smartWalkDirs = {}
 local smartWalkDir = nil
-local walkEvent = nil
 local lastTurn = 0
-local nextWalkDir = nil
-local lastWalkDir = nil
-local lastCancelWalkTime = 0
-
+local firstStep = true
 
 local keys = {
     { "Up",      North },
@@ -37,116 +33,23 @@ local function stopSmartWalk()
     smartWalkDir = nil
 end
 
---- Cancels the current walk event if active.
-local function cancelWalkEvent()
-    if walkEvent then
-        removeEvent(walkEvent)
-        walkEvent = nil
-    end
-    nextWalkDir = nil
-end
-
---- Generalized floor change check.
-local function canChangeFloor(pos, deltaZ)
-    if deltaZ == 0 then
-        return false
-    end
-    local player = g_game.getLocalPlayer()
-    if not player then
-        return false
-    end
-
-    local toPos = {x = pos.x, y = pos.y, z = pos.z + deltaZ}
-    local toTile = g_map.getTile(toPos)
-    if not toTile then
-        return false
-    end
-
-    if deltaZ > 0 then
-        -- Going DOWN
-        return toTile:isWalkable() and (toTile:hasElevation(3) or toTile:hasFloorChange())
-    end
-    -- deltaZ < 0
-    -- Going UP: check if current tile has elevation (stairs to climb) AND destination is walkable
-    local fromTile = g_map.getTile(player:getPosition())
-    return fromTile and fromTile:hasElevation(3) and toTile:isWalkable()
-end
-
 --- Makes the player walk in the given direction.
+--- The C++ Game::walk() now handles pre-walking, canWalk checks,
+--- walk scheduling, and floor change detection.
 local function walk(dir)
-    local player = g_game.getLocalPlayer()
-    if not player or g_game.isDead() or player:isDead() then
-        return
+    if g_keyboard.getModifiers() ~= KeyboardNoModifier then
+        return false
     end
 
-    if player:isWalkLocked() then
-        nextWalkDir = nil
-        return
-    end
-
-    if g_game.isFollowing() then
-        g_game.cancelFollow()
-    end
-
-    local isAutoWalking = player:isAutoWalking()
-    if isAutoWalking then
-        g_game.stop()
-        if isAutoWalking then
-            player:stopAutoWalk()
-        end
-        player:lockWalk(player:getStepDuration() + 50)
-        return
-    end
-
-    if not player:canWalk() then
-        if lastWalkDir ~= dir then
-            nextWalkDir = dir
-        end
-        return
-    end
-
-    nextWalkDir = nil
-    lastWalkDir = dir
-
-    if g_game.getFeature(GameAllowPreWalk) then
-        local pos = player:getPosition()
-        if not pos then
-            return
-        end
-        local toPos = Position.translatedToDirection(pos, dir)
-        local toTile = g_map.getTile(toPos)
-        if not toTile or not toTile:isWalkable() then
-            if not canChangeFloor(toPos, 1) and not canChangeFloor(toPos, -1) then
-                return false
-            end
-        else
-            player:preWalk(dir)
-        end
-    end
-
-    g_game.walk(dir)
+    local dire = smartWalkDir or dir
+    g_game.walk(dire, firstStep)
+    firstStep = false
     return true
-end
-
---- Adds a walk event with an optional delay.
-local function addWalkEvent(dir, delay)
-    if g_clock.millis() - lastCancelWalkTime > 20 then
-        cancelWalkEvent()
-        lastCancelWalkTime = g_clock.millis()
-    end
-
-    local action = function()
-        if g_keyboard.getModifiers() == KeyboardNoModifier then
-            walk(smartWalkDir or dir)
-        end
-    end
-
-    walkEvent = delay ~= nil and delay > 0 and scheduleEvent(action, delay) or addEvent(action)
 end
 
 --- Initiates a smart walk in the given direction.
 function smartWalk(dir)
-    addWalkEvent(dir)
+    walk(dir)
 end
 
 --- Changes the current walking direction.
@@ -189,8 +92,6 @@ local function turn(dir, repeated)
         return
     end
 
-    cancelWalkEvent()
-
     local TURN_DELAY_REPEATED = 150
     local TURN_DELAY_DEFAULT = 50
 
@@ -206,7 +107,7 @@ end
 
 --- Binds movement keys to their respective directions.
 local function bindKeys()
-    modules.game_interface.getRootPanel():setAutoRepeatDelay(0)
+    modules.game_interface.getRootPanel():setAutoRepeatDelay(80)
 
     for _, keyDir in ipairs(keys) do bindWalkKey(keyDir[1], keyDir[2]) end
     for _, keyDir in ipairs(turnKeys) do bindTurnKey(keyDir[1], keyDir[2]) end
@@ -235,13 +136,6 @@ end
 
 --- Handles the end of a walking event.
 local function onWalkFinish(player)
-    if nextWalkDir then
-        if not g_game.getFeature(GameAllowPreWalk) then
-            walk(nextWalkDir)
-        else
-            addWalkEvent(nextWalkDir, 50)
-        end
-    end
 end
 
 local function onAutoWalk(player)
@@ -295,12 +189,16 @@ function bindWalkKey(key, dir)
     local gameRootPanel = modules.game_interface.getRootPanel()
 
     g_keyboard.bindKeyDown(key, function()
-        g_keyboard.setKeyDelay(key, 1)
+        if modules.client_options.getOption('autoChaseOverride') then
+            if g_game.isAttacking() and g_game.getChaseMode() == ChaseOpponent then
+                g_game.setChaseMode(DontChase)
+            end
+        end
+        firstStep = true
         changeWalkDir(dir)
     end, gameRootPanel, true)
 
     g_keyboard.bindKeyUp(key, function()
-        g_keyboard.setKeyDelay(key, 30)
         changeWalkDir(dir, true)
     end, gameRootPanel, true)
 

@@ -86,6 +86,13 @@ void Game::resetGameStates()
         m_pingEvent = nullptr;
     }
 
+    if (m_walkEvent) {
+        m_walkEvent->cancel();
+        m_walkEvent = nullptr;
+    }
+
+    m_nextScheduledDir = Otc::InvalidDirection;
+
     if (m_checkConnectionEvent) {
         m_checkConnectionEvent->cancel();
         m_checkConnectionEvent = nullptr;
@@ -658,14 +665,90 @@ void Game::safeLogout()
     m_protocolGame->sendLogout();
 }
 
-bool Game::walk(const Otc::Direction direction)
+bool Game::walk(const Otc::Direction direction, const bool isKeyDown /*= false*/)
 {
-    if (!canPerformGameAction() || direction == Otc::InvalidDirection)
+    if (!canPerformGameAction())
         return false;
+
+    // must cancel auto walking, and wait next try
+    if (m_localPlayer->isAutoWalking()) {
+        m_protocolGame->sendStop();
+        m_localPlayer->autoWalk(m_localPlayer->getPosition().translatedToDirection(direction));
+        return false;
+    }
+
+    // check we can walk and add new walk event if false
+    if (!m_localPlayer->canWalk()) {
+        if (m_nextScheduledDir != direction) {
+            const float ticks = std::clamp<float>(m_localPlayer->getStepTicksLeft(), 1, 2000);
+            if (isKeyDown || (m_scheduleLastWalk && ticks < std::min<int>(m_localPlayer->getStepDuration() / 3, 250))) {
+                // must add a new walk event
+                if (m_walkEvent) {
+                    m_walkEvent->cancel();
+                    m_walkEvent = nullptr;
+                }
+
+                m_walkEvent = g_dispatcher.scheduleEvent([this, direction] { walk(direction); }, ticks);
+                m_nextScheduledDir = direction;
+            }
+        }
+        return false;
+    }
+
+    m_nextScheduledDir = Otc::InvalidDirection;
+
+    // if it's going to walk, but there is another scheduled event, cancel it
+    if (m_walkEvent && !m_walkEvent->isExecuted()) {
+        m_walkEvent->cancel();
+        m_walkEvent = nullptr;
+    }
+
+    const auto& toPos = m_localPlayer->getPosition().translatedToDirection(direction);
+
+    // only do prewalks to walkable tiles (like grounds and not walls)
+    const auto& toTile = g_map.getTile(toPos);
+    if (toTile && toTile->isWalkable()) {
+        m_localPlayer->preWalk(direction);
+    } else {
+        // check if can walk to a lower floor
+        const auto& canChangeFloorDown = [&]() -> bool {
+            Position pos = toPos;
+            if (!pos.down())
+                return false;
+
+            const auto& toTile = g_map.getTile(pos);
+            return toTile && toTile->hasElevation(3);
+        };
+
+        // check if can walk to a higher floor
+        const auto& canChangeFloorUp = [&]() -> bool {
+            const auto& fromTile = m_localPlayer->getTile();
+            if (!fromTile || !fromTile->hasElevation(3))
+                return false;
+
+            Position pos = toPos;
+            if (!pos.up())
+                return false;
+
+            const auto& toTile = g_map.getTile(pos);
+            return toTile && toTile->isWalkable();
+        };
+
+        if (!(canChangeFloorDown() || canChangeFloorUp() || !toTile || toTile->isEmpty()))
+            return false;
+
+        m_localPlayer->lockWalk();
+    }
+
+    // must cancel follow before any new walk
+    if (isFollowing())
+        cancelFollow();
 
     g_lua.callGlobalField("g_game", "onWalk", direction);
 
     forceWalk(direction);
+
+    m_lastWalkDir = direction;
 
     return true;
 }
@@ -990,6 +1073,13 @@ void Game::cancelAttackAndFollow()
 
     if (isAttacking())
         setAttackingCreature(nullptr);
+
+    if (m_walkEvent) {
+        m_walkEvent->cancel();
+        m_walkEvent = nullptr;
+    }
+
+    m_nextScheduledDir = Otc::InvalidDirection;
 
     m_localPlayer->stopAutoWalk();
 
