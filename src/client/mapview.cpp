@@ -575,7 +575,7 @@ void MapView::onMouseMove(const Position& mousePos, const bool /*isVirtualMove*/
         bool cursorSet = false;
         if (m_cursorAnimations) {
             if (const auto& tile = getTopTile(mousePos)) {
-                if (const auto& creature = tile->getTopCreature()) {
+                if (const auto& creature = tile->getTopCreature(true)) {
                     if (creature->isMonster()) {
                         int id = g_mouse.getCursorId("attack");
                         if (id != -1) {

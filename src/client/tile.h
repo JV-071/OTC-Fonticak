@@ -56,7 +56,7 @@ public:
 
     ThingPtr getTopLookThing();
     ThingPtr getTopUseThing();
-    CreaturePtr getTopCreature(bool checkAround = false);
+    CreaturePtr getTopCreature(bool checkAround = true);
     ThingPtr getTopMoveThing();
     ThingPtr getTopMultiUseThing();
 
@@ -175,6 +175,9 @@ private:
         rebuildCreatureRange();
         for (const auto& thing : m_things)
             setThingFlag(thing);
+
+        for (const auto& creature : m_walkingCreatures)
+            setThingFlag(creature);
     }
 
     bool hasThingWithElevation() { return hasElevation() && m_thingTypeFlag & HAS_THING_WITH_ELEVATION; }
@@ -210,7 +213,7 @@ private:
     int16_t m_firstCreatureIndex{ -1 };
     int16_t m_lastCreatureIndex{ -1 };
 
-    int8_t m_highlightThingStackPos = -1;
+    ThingPtr m_highlightedThing;
 
     TileSelectType m_selectType{ TileSelectType::NONE };
 

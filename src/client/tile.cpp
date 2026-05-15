@@ -201,7 +201,7 @@ void Tile::clean()
         clearAttachedWidgets();
     }
 
-    m_highlightThingStackPos = -1;
+    m_highlightedThing = nullptr;
     while (!m_things.empty())
         removeThing(m_things.front());
 
@@ -357,7 +357,7 @@ bool Tile::removeThing(const ThingPtr thing)
 
     m_things.erase(it);
 
-    m_highlightThingStackPos = -1;
+    m_highlightedThing = nullptr;
     thing->m_stackPos = -1;
     thing->setMarked(Color::white);
 
@@ -576,37 +576,46 @@ ThingPtr Tile::getTopUseThing()
 
 CreaturePtr Tile::getTopCreature(const bool checkAround)
 {
-    if (!hasCreatures()) return nullptr;
-
-    CreaturePtr creature;
-    for (const auto& thing : m_things) {
-        if (thing->isLocalPlayer()) // return local player if there is no other creature
-            creature = thing->static_self_cast<Creature>();
-        else if (thing->isCreature())
-            return thing->static_self_cast<Creature>();
-    }
-
-    if (creature)
-        return creature;
-
+    // 1. Priority: Creatures walking into/inside this tile (most visual relevance)
     if (!m_walkingCreatures.empty())
         return m_walkingCreatures.back();
 
-    // check for walking creatures in tiles around
+    // 2. Priority: Static creatures (except local player)
+    CreaturePtr localPlayer;
+    for (const auto& thing : m_things) {
+        if (thing->isLocalPlayer()) {
+            localPlayer = thing->static_self_cast<Creature>();
+            continue;
+        }
+        if (thing->isCreature())
+            return thing->static_self_cast<Creature>();
+    }
+
+    // 3. Priority: Walking creatures in tiles around (approaching or leaving)
     if (checkAround) {
         for (const auto& pos : m_position.getPositionsAround()) {
             const auto& tile = g_map.getTile(pos);
             if (!tile) continue;
 
-            for (const auto& c : tile->getCreatures()) {
-                if (c->isWalking() && c->getLastStepFromPosition() == m_position && c->getStepProgress() < .75f) {
-                    return c;
+            auto checkCreature = [&](const CreaturePtr& c) {
+                if (c->isWalking() && (c->getLastStepFromPosition() == m_position || c->getPosition() == m_position) && c->getStepProgress() < 1.05f) {
+                    return true;
                 }
+                return false;
+            };
+
+            for (const auto& c : tile->getWalkingCreatures()) {
+                if (checkCreature(c)) return c;
+            }
+            
+            for (const auto& c : tile->getCreatures()) {
+                if (checkCreature(c)) return c;
             }
         }
     }
 
-    return nullptr;
+    // 4. Last resort: Local player
+    return localPlayer;
 }
 
 ThingPtr Tile::getTopMoveThing()
@@ -637,7 +646,7 @@ ThingPtr Tile::getTopMultiUseThing()
     if (isEmpty())
         return nullptr;
 
-    if (const auto& topCreature = getTopCreature())
+    if (const auto& topCreature = getTopCreature(true))
         return topCreature;
 
     for (const auto& thing : m_things) {
@@ -825,9 +834,9 @@ bool Tile::checkForDetachableThing(const TileSelectType selectType)
         markHighlightedThing(Color::yellow);
     };
 
-    m_highlightThingStackPos = -1;
-    if (const auto& creature = getTopCreature()) {
-        m_highlightThingStackPos = creature->getStackPos();
+    m_highlightedThing = nullptr;
+    if (const auto& creature = getTopCreature(true)) {
+        m_highlightedThing = creature;
         markIfYouNeed();
         return true;
     }
@@ -843,7 +852,7 @@ bool Tile::checkForDetachableThing(const TileSelectType selectType)
             if (isFiltered && item->isIgnoreLook() && !item->isUsable() && !item->hasLight())
                 continue;
 
-            m_highlightThingStackPos = item->getStackPos();
+            m_highlightedThing = item;
             markIfYouNeed();
             return true;
         }
@@ -856,7 +865,7 @@ bool Tile::checkForDetachableThing(const TileSelectType selectType)
             if (isFiltered && (item->isIgnoreLook() || item->isFluidContainer()))
                 continue;
 
-            m_highlightThingStackPos = item->getStackPos();
+            m_highlightedThing = item;
             markIfYouNeed();
             return true;
         }
@@ -870,14 +879,14 @@ bool Tile::checkForDetachableThing(const TileSelectType selectType)
             if (isFiltered && (item->isIgnoreLook() || !item->hasLensHelp()))
                 continue;
 
-            m_highlightThingStackPos = item->getStackPos();
+            m_highlightedThing = item;
             markIfYouNeed();
             return true;
         }
     }
 
     if (!isFiltered) {
-        m_highlightThingStackPos = m_things.size() - 1;
+        m_highlightedThing = m_things.back();
         markIfYouNeed();
         return true;
     }
@@ -1036,8 +1045,8 @@ void Tile::drawTexts(Point dest)
 }
 
 void Tile::markHighlightedThing(const Color& color) {
-    if (m_highlightThingStackPos > -1 && m_highlightThingStackPos < static_cast<int8_t>(m_things.size())) {
-        m_things[m_highlightThingStackPos]->setMarked(color);
+    if (m_highlightedThing) {
+        m_highlightedThing->setMarked(color);
     }
 }
 
