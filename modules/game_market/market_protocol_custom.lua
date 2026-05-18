@@ -45,9 +45,10 @@ function parseCustomMarketMessage(protocol, msg)
             local category = msg:getU8()
             local name = msg:getString()
             local amount = msg:getU16()
+            local tier = msg:getU8()
 
-            table.insert(customMarketEnter.items, { id = itemId, category = category, name = name })
-            table.insert(customMarketEnter.depotItems, {itemId, amount})
+            table.insert(customMarketEnter.items, { id = itemId, category = category, name = name, tier = tier })
+            table.insert(customMarketEnter.depotItems, {itemId, tier, amount})
         end
 
         if lastChunk then
@@ -70,13 +71,14 @@ function parseCustomMarketMessage(protocol, msg)
                 local offerId = msg:getU32()
                 local timestamp = msg:getU32()
                 local itemId = msg:getU16()
+                local tier = msg:getU8()
                 local amount = msg:getU16()
                 local price = msg:getU32()
                 local playerName = msg:getString()
                 local state = msg:getU8()
                 
                 if g_game.onMarketReadOffer then
-                    signalcall(g_game.onMarketReadOffer, type, amount, offerId, itemId, playerName, price, state, timestamp, mappedVar, 0)
+                    signalcall(g_game.onMarketReadOffer, type, amount, offerId, itemId, playerName, price, state, timestamp, mappedVar, tier)
                 end
             end
         end
@@ -164,6 +166,7 @@ function sendMarketCreateOffer(offerType, itemId, tier, amount, price, anonymous
         msg:addU16(amount)
         msg:addU32(price)
         msg:addU8(anonymous and 1 or 0)
+        msg:addU8(tier or 0)
         p:send(msg)
     end
 end
