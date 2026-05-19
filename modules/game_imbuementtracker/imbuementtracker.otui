@@ -32,11 +32,13 @@ ImbuementTrackerMenu < PopupMenu
     id: showNoImbuements
     !text: tr('Show items with no active imbuement')
 
-ImbuementSlot < Panel
-  image-source: /images/game/imbuing/icons/0
-  image-clip: 0 0 64 64
-  width: 34
-  height: 34
+ImbuementSlot < FlatPanel
+  size: 34 34
+
+  UIWidget
+    id: icon
+    anchors.fill: parent
+    margin: 1
 
   Label
     id: duration
@@ -48,32 +50,34 @@ ImbuementSlot < Panel
     color: #ffff00
     margin-top: 3
 
-ImbuementSlotInactive < Panel
-  image-source: /images/game/imbuing/slot_inactive
-  image-clip: 0 0 64 64
-  width: 34
-  height: 34
+ImbuementSlotInactive < FlatPanel
+  size: 34 34
+
+  UIWidget
+    anchors.fill: parent
+    margin: 1
+    image-source: /images/game/trackers/imbue-slot
+    image-rect: 0 0 32 32
 
 InventoryItem < Panel
-  height: 34
+  height: 36
   margin-top: 3
   layout: anchor
 
   Item
     id: item
-    width: 34
-    height: 34
+    size: 34 34
     padding: 3
     anchors.left: parent.left
-    anchors.top: prev.bottom
+    anchors.top: parent.top
     margin-right: 6
   
   Panel
     id: imbuementSlots
     anchors.top: parent.top
     anchors.right: parent.right
-    anchors.bottom: parent.bottom
     anchors.left: prev.right
+    height: 34
     layout: horizontalBox
 
 ImbuementTracker < MiniWindow

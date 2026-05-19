@@ -217,7 +217,7 @@ local function addTrackedItem(item)
             -- Active slot with imbuement
             local slot = g_ui.createWidget('ImbuementSlot')
             slot:setId('slot' .. imbuementSlot['id'])
-            slot:setImageSource('/images/game/imbuing/icons/' .. imbuementSlot['iconId'])
+            slot.icon:setImageSource('/images/game/imbuing/icons/' .. imbuementSlot['iconId'])
             slot:setMarginLeft(3)
             setDuration(slot.duration, imbuementSlot['duration'])
             trackedItem.imbuementSlots:addChild(slot)
@@ -263,12 +263,10 @@ function onUpdateImbuementTracker(items)
 end
 
 function onGameStart()
-    if g_game.getClientVersion() >= 1100 then
-        imbuementTrackerButton = modules.game_mainpanel.addToggleButton('imbuementTrackerButton', tr('Imbuement Tracker'), '/images/options/button_imbuementtracker', toggle)
-        g_game.imbuementDurations(imbuementTrackerButton:isOn())
-        imbuementTracker:setupOnStart()
-        loadFilters()
-    end
+    imbuementTrackerButton = modules.game_mainpanel.addToggleButton('imbuementTrackerButton', tr('Imbuement Tracker'), '/images/options/button_imbuementtracker', toggle)
+    g_game.imbuementDurations(imbuementTrackerButton:isOn())
+    imbuementTracker:setupOnStart()
+    loadFilters()
 end
 
 function onGameEnd()
