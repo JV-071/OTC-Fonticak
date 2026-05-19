@@ -4643,7 +4643,7 @@ void ProtocolGame::parseSupplyStash(const InputMessagePtr& msg)
         uint16_t itemId = msg->getU16();
         uint32_t amount = msg->getU32();
         uint8_t tier = msg->getU8();
-        stashItems.push_back({ itemId, amount, tier });
+        stashItems.push_back({ static_cast<uint32_t>(itemId), amount, static_cast<uint32_t>(tier) });
     }
     if (g_game.getProtocolVersion() < 1410) {
         msg->getU16(); // free slots
