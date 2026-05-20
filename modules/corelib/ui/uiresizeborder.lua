@@ -29,6 +29,14 @@ function UIResizeBorder:onDestroy()
 end
 
 function UIResizeBorder:onHoverChange(hovered)
+    if g_ui.getDraggingWidget() or g_ui.isMouseGrabbed() then
+        if self.hovering then
+            g_effects.fadeOut(self)
+            self.hovering = false
+        end
+        return
+    end
+
     if hovered then
         local nativeCursor = modules.client_options and modules.client_options.getOption('nativeCursor')
         

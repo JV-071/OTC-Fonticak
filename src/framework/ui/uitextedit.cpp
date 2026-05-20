@@ -21,6 +21,7 @@
  */
 
 #include "uitextedit.h"
+#include "uimanager.h"
 
 #include "uitranslator.h"
 #include "framework/core/clock.h"
@@ -1259,6 +1260,11 @@ void UITextEdit::updateText()
 void UITextEdit::onHoverChange(const bool hovered)
 {
     if (getProp(PropChangeCursorImage)) {
+        // If dragging a widget or the mouse is grabbed, do not change/override the cursor
+        if (g_ui.getDraggingWidget() || g_ui.isMouseGrabbed()) {
+            return;
+        }
+
         const bool nativeCursor = g_mouse.isUsingNativeCursor();
         
         // Check isCursorChanged only when NOT using native cursor

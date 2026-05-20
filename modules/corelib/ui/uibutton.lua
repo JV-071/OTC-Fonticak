@@ -30,6 +30,14 @@ function UIButton:onHoverChange(hovered)
         return
     end
     
+    if g_ui.getDraggingWidget() or g_ui.isMouseGrabbed() then
+        if self.cursorPushed then
+            self.cursorPushed = false
+        end
+        UIWidget.onHoverChange(self, hovered)
+        return
+    end
+    
     local nativeCursor = modules.client_options.getOption('nativeCursor')
     local animatedCursor = modules.client_options.getOption('showAnimatedCursor')
     

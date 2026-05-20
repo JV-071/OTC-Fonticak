@@ -1102,6 +1102,13 @@ function onConsoleTextHovered(widget, text, hovered)
         return
     end
     
+    if g_ui.getDraggingWidget() or g_ui.isMouseGrabbed() then
+        if widget.consoleCursorPushed then
+            widget.consoleCursorPushed = false
+        end
+        return
+    end
+    
     local nativeCursor = modules.client_options.getOption('nativeCursor')
     local animatedCursor = modules.client_options.getOption('showAnimatedCursor')
     

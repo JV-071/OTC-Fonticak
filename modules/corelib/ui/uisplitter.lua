@@ -9,6 +9,13 @@ function UISplitter.create()
 end
 
 function UISplitter:onHoverChange(hovered)
+    if g_ui.getDraggingWidget() or g_ui.isMouseGrabbed() then
+        if self.hovering then
+            self.hovering = false
+        end
+        return
+    end
+
     -- Check if margin can be changed
     local margin = (self.vertical and self:getMarginBottom() or self:getMarginRight())
     if hovered and (self:canUpdateMargin(margin + 1) ~= margin or self:canUpdateMargin(margin - 1) ~= margin) then
