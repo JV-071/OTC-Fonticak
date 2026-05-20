@@ -115,7 +115,8 @@ local valueInSeconds = function(t)
 			table.remove(t, 1)
 		end
     end
-    return math.ceil(d/((now-time)/1000))
+    local duration = math.max(1000, now - time) / 1000
+    return math.ceil(d/duration)
 end
 
 -- Function to handle session data for 60 minutes
@@ -145,7 +146,8 @@ local valueInSessionMode = function(t)
     end
     
     if time > 0 then
-        return math.ceil(d/((now-time)/1000))
+        local duration = math.max(1000, now - time) / 1000
+        return math.ceil(d/duration)
     else
         return 0
     end

@@ -11,7 +11,12 @@ function dirtostring(dir)
 end
 
 function comma_value(n)
+    if not n then return '0' end
+    n = tostring(n)
     local left, num, right = string.match(n, '^([^%d]*%d)(%d*)(.-)$')
+    if not left or not num or not right then
+        return n
+    end
     return left .. (num:reverse():gsub('(%d%d%d)', '%1,'):reverse()) .. right
 end
 

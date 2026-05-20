@@ -90,7 +90,8 @@ local valueInSeconds = function(t)
 			table.remove(t, 1)
 		end
     end
-    return math.ceil(d/((now-time)/1000))
+    local duration = math.max(1000, now - time) / 1000
+    return math.ceil(d/duration)
 end
 
 if not HuntingAnalyser then
