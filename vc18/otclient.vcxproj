@@ -708,6 +708,9 @@
   <ItemGroup>
     <ResourceCompile Include="..\src\otcicon.rc" />
   </ItemGroup>
+  <Target Name="GenerateGitVersion" BeforeTargets="PrepareForBuild">
+    <Exec Command="cd &quot;$(ProjectDir)..\tools&quot; &amp;&amp; generate_git_version.bat" />
+  </Target>
   <Target Name="EnsureGeneratedDirectoryExists" BeforeTargets="ProtoCompile">
     <MakeDir Directories="generated" />
   </Target>

@@ -2115,7 +2115,7 @@ function consoleController:onGameStart()
 
     local clientVersion = g_game.getClientVersion()
     if clientVersion < 862 then
-        Keybind.new("Dialogs", "Open Rule Violation", "Ctrl+R", "")
+        Keybind.new("Dialogs", "Open Rule Violation", "Ctrl+Shift+R", "")
         local gameRootPanel = modules.game_interface.getRootPanel()
         Keybind.bind("Dialogs", "Open Rule Violation", {
           {
