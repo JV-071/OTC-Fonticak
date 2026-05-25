@@ -1,47 +1,47 @@
-BUY = 1
-SELL = 2
-CURRENCY = 'gold'
-CURRENCY_DECIMAL = false
-WEIGHT_UNIT = 'oz'
-LAST_INVENTORY = 10
+local BUY = 1
+local SELL = 2
+local CURRENCY = 'gold'
+local CURRENCY_DECIMAL = false
+local WEIGHT_UNIT = 'oz'
+local LAST_INVENTORY = 10
 
-npcWindow = nil
-itemsPanel = nil
-radioTabs = nil
-radioItems = nil
-searchText = nil
-setupPanel = nil
-quantity = nil
-quantityScroll = nil
-nameLabel = nil
-priceLabel = nil
-moneyLabel = nil
-weightDesc = nil
-weightLabel = nil
-capacityDesc = nil
-capacityLabel = nil
-tradeButton = nil
-buyTab = nil
-sellTab = nil
-initialized = false
+local npcWindow = nil
+local itemsPanel = nil
+local radioTabs = nil
+local radioItems = nil
+local searchText = nil
+local setupPanel = nil
+local quantity = nil
+local quantityScroll = nil
+local nameLabel = nil
+local priceLabel = nil
+local moneyLabel = nil
+local weightDesc = nil
+local weightLabel = nil
+local capacityDesc = nil
+local capacityLabel = nil
+local tradeButton = nil
+local buyTab = nil
+local sellTab = nil
+local initialized = false
 
-showWeight = true
-buyWithBackpack = nil
-ignoreCapacity = nil
-ignoreEquipped = nil
-showAllItems = nil
-sellAllButton = nil
+local showWeight = true
+local buyWithBackpack = nil
+local ignoreCapacity = nil
+local ignoreEquipped = nil
+local showAllItems = nil
+local sellAllButton = nil
 
-playerFreeCapacity = 0
-playerMoney = 0
-tradeItems = {}
-playerItems = {}
-selectedItem = nil
+local playerFreeCapacity = 0
+local playerMoney = 0
+local tradeItems = {[BUY] = {}, [SELL] = {}}
+local playerItems = {}
+local selectedItem = nil
 
-cancelNextRelease = nil
+local cancelNextRelease = nil
 
-function init()
-    npcWindow = g_ui.displayUI('npctrade')
+function controllerNpcTrader:legacy_init()
+    npcWindow = g_ui.displayUI('/game_npctrade/templates/npctrade_legacy')
     npcWindow:setVisible(false)
 
     itemsPanel = npcWindow:recursiveGetChildById('itemsPanel')
@@ -79,13 +79,6 @@ function init()
         playerFreeCapacity = g_game.getLocalPlayer():getFreeCapacity()
     end
 
-    connect(g_game, {
-        onGameEnd = hide,
-        onOpenNpcTrade = onOpenNpcTrade,
-        onCloseNpcTrade = onCloseNpcTrade,
-        onPlayerGoods = onPlayerGoods
-    })
-
     connect(LocalPlayer, {
         onFreeCapacityChange = onFreeCapacityChange,
         onInventoryChange = onInventoryChange
@@ -94,26 +87,21 @@ function init()
     initialized = true
 end
 
-function terminate()
+function controllerNpcTrader:legacy_terminate()
     initialized = false
-    npcWindow:destroy()
-
-    disconnect(g_game, {
-        onGameEnd = hide,
-        onOpenNpcTrade = onOpenNpcTrade,
-        onCloseNpcTrade = onCloseNpcTrade,
-        onPlayerGoods = onPlayerGoods
-    })
-
+    if npcWindow then
+        npcWindow:destroy()
+    end
+    npcWindow = nil
     disconnect(LocalPlayer, {
         onFreeCapacityChange = onFreeCapacityChange,
         onInventoryChange = onInventoryChange
     })
 end
 
-function show()
-    if g_game.isOnline() then
-        if #tradeItems[BUY] > 0 then
+function controllerNpcTrader:legacy_show()
+    if g_game.isOnline() and npcWindow then
+        if tradeItems[BUY] and #tradeItems[BUY] > 0 then
             radioTabs:selectWidget(buyTab)
         else
             radioTabs:selectWidget(sellTab)
@@ -125,8 +113,10 @@ function show()
     end
 end
 
-function hide()
-    npcWindow:hide()
+function controllerNpcTrader:legacy_hide()
+    if npcWindow then
+        npcWindow:hide()
+    end
 end
 
 function onItemBoxChecked(widget)
@@ -275,7 +265,7 @@ function getItemPrice(item, single)
     return item.price * amount
 end
 
-function getSellQuantity(item)
+function getSellQuantityLegacy(item)
     if not item or not playerItems[item:getId()] then
         return 0
     end
@@ -292,13 +282,13 @@ function getSellQuantity(item)
     return playerItems[item:getId()] - removeAmount
 end
 
-function canTradeItem(item)
+function canTradeItemLegacy(item)
     if getCurrentTradeType() == BUY then
         return
             (ignoreCapacity:isChecked() or (not ignoreCapacity:isChecked() and playerFreeCapacity >= item.weight)) and
                 playerMoney >= getItemPrice(item, true)
     else
-        return getSellQuantity(item.ptr) > 0
+        return getSellQuantityLegacy(item.ptr) > 0
     end
 end
 
@@ -316,7 +306,7 @@ function refreshItem(item)
         quantityScroll:setMaximum(finalCount)
     else
         quantityScroll:setMinimum(1)
-        quantityScroll:setMaximum(math.max(0, math.min(getMaxAmount(), getSellQuantity(item.ptr))))
+        quantityScroll:setMaximum(math.max(0, math.min(getMaxAmount(), getSellQuantityLegacy(item.ptr))))
     end
 
     onQuantityValueChange(quantityScroll:getValue())
@@ -385,7 +375,7 @@ function refreshPlayerGoods()
         local itemWidget = itemsPanel:getChildByIndex(i)
         local item = itemWidget.item
 
-        local canTrade = canTradeItem(item)
+        local canTrade = canTradeItemLegacy(item)
         itemWidget:setOn(canTrade)
         itemWidget:setEnabled(canTrade)
 
@@ -434,16 +424,18 @@ function onOpenNpcTrade(items)
     end
 
     refreshTradeItems()
-    addEvent(show) -- player goods has not been parsed yet
+    addEvent(function()
+        controllerNpcTrader:legacy_show()
+    end) -- player goods has not been parsed yet
 end
 
-function closeNpcTrade()
+function closeNpcTradeLegacy()
     g_game.closeNpcTrade()
-    hide()
+    controllerNpcTrader:legacy_hide()
 end
 
-function onCloseNpcTrade()
-    hide()
+function controllerNpcTrader:onCloseNpcTradeLegacy()
+    controllerNpcTrader:legacy_hide()
 end
 
 function onPlayerGoods(money, items)
@@ -508,7 +500,7 @@ function checkSellAllTooltip()
     for key, amount in pairs(playerItems) do
         local data = getTradeItemData(key, SELL)
         if data then
-            amount = getSellQuantity(data.ptr)
+            amount = getSellQuantityLegacy(data.ptr)
             if amount > 0 then
                 if data and amount > 0 then
                     info = info .. (not first and '\n' or '') .. amount .. ' ' .. data.name .. ' (' .. data.price *
@@ -545,10 +537,22 @@ function getMaxAmount()
     return 100
 end
 
-function sellAll()
+function isTradingLegacy()
+    return npcWindow and npcWindow:isVisible() or false
+end
+
+function getSellItemsLegacy()
+    return tradeItems[SELL] or {}
+end
+
+function getBuyItemsLegacy()
+    return tradeItems[BUY] or {}
+end
+
+function sellAllLegacy()
     for itemid, item in pairs(playerItems) do
         local item = Item.create(itemid)
-        local amount = getSellQuantity(item)
+        local amount = getSellQuantityLegacy(item)
         if amount > 0 then
             g_game.sellItem(item, amount, ignoreEquipped:isChecked())
         end
