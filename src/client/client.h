@@ -49,10 +49,26 @@ public:
     float getMissileAlpha() const { return m_missileAlpha; }
     void setMissileAlpha(const float v) { m_missileAlpha = v; }
 
+    float getOwnSpellEffectAlpha() const { return m_ownSpellEffectAlpha; }
+    void setOwnSpellEffectAlpha(const float v) { m_ownSpellEffectAlpha = v; }
+
+    float getOtherPlayerSpellEffectAlpha() const { return m_otherPlayerSpellEffectAlpha; }
+    void setOtherPlayerSpellEffectAlpha(const float v) { m_otherPlayerSpellEffectAlpha = v; }
+
+    float getCreatureSpellEffectAlpha() const { return m_creatureSpellEffectAlpha; }
+    void setCreatureSpellEffectAlpha(const float v) { m_creatureSpellEffectAlpha = v; }
+
+    float getBossAreaCreatureEffectAlpha() const { return m_bossAreaCreatureEffectAlpha; }
+    void setBossAreaCreatureEffectAlpha(const float v) { m_bossAreaCreatureEffectAlpha = v; }
+
 private:
     UIMapPtr m_mapWidget;
     float m_effectAlpha{ 1.f };
     float m_missileAlpha{ 1.f };
+    float m_ownSpellEffectAlpha{ 1.f };
+    float m_otherPlayerSpellEffectAlpha{ 1.f };
+    float m_creatureSpellEffectAlpha{ 1.f };
+    float m_bossAreaCreatureEffectAlpha{ 1.f };
 };
 
 extern Client g_client;

@@ -4140,8 +4140,19 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type) cons
                 const auto& effect = g_attachedEffects.getById(effectId);
                 if (effect && currentAttachedEffectIds.find(effectId) == currentAttachedEffectIds.end()) {
                     const auto& clonedEffect = effect->clone();
-                    clonedEffect->setPermanent(false);
-                    creature->attachEffect(clonedEffect);
+                    if (clonedEffect) {
+                        clonedEffect->setPermanent(false);
+                        float alpha = 1.f;
+                        if (creature->isLocalPlayer()) {
+                            alpha = g_client.getOwnSpellEffectAlpha();
+                        } else if (creature->isPlayer()) {
+                            alpha = g_client.getOtherPlayerSpellEffectAlpha();
+                        } else {
+                            alpha = g_client.getCreatureSpellEffectAlpha();
+                        }
+                        clonedEffect->setOpacity(alpha);
+                        creature->attachEffect(clonedEffect);
+                    }
                 }
             }
 
@@ -6355,7 +6366,20 @@ void ProtocolGame::parseAttachedEffect(const InputMessagePtr& msg)
         return;
     }
 
-    creature->attachEffect(effect->clone());
+    const auto clonedEffect = effect->clone();
+    if (clonedEffect) {
+        float alpha = 1.f;
+        if (creature->isLocalPlayer()) {
+            alpha = g_client.getOwnSpellEffectAlpha();
+        } else if (creature->isPlayer()) {
+            alpha = g_client.getOtherPlayerSpellEffectAlpha();
+        } else {
+            // Generic creature (monsters, npcs). Use creature alpha for now.
+            alpha = g_client.getCreatureSpellEffectAlpha();
+        }
+        clonedEffect->setOpacity(alpha);
+        creature->attachEffect(clonedEffect);
+    }
 }
 
 void ProtocolGame::parseDetachEffect(const InputMessagePtr& msg)

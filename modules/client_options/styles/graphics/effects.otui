@@ -127,3 +127,59 @@ UIWidget
       &minimumScrollValue: 10
       &maximumScrollValue: 100
       &scrollSize: 21
+
+  SmallReversedQtPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    margin-top: 7
+    height: 22
+
+    OptionScaleScroll
+      id: setOwnSpellEffectAlphaScroll
+      anchors.fill: parent
+      &minimumScrollValue: 0
+      &maximumScrollValue: 100
+      &scrollSize: 21
+
+  SmallReversedQtPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    margin-top: 7
+    height: 22
+
+    OptionScaleScroll
+      id: setOtherPlayerSpellEffectAlphaScroll
+      anchors.fill: parent
+      &minimumScrollValue: 0
+      &maximumScrollValue: 100
+      &scrollSize: 21
+
+  SmallReversedQtPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    margin-top: 7
+    height: 22
+
+    OptionScaleScroll
+      id: setCreatureSpellEffectAlphaScroll
+      anchors.fill: parent
+      &minimumScrollValue: 0
+      &maximumScrollValue: 100
+      &scrollSize: 21
+
+  SmallReversedQtPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    margin-top: 7
+    height: 22
+
+    OptionScaleScroll
+      id: setBossAreaCreatureEffectAlphaScroll
+      anchors.fill: parent
+      &minimumScrollValue: 0
+      &maximumScrollValue: 100
+      &scrollSize: 21

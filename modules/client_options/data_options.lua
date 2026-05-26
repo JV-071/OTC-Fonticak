@@ -586,6 +586,34 @@ return {
                 'Opacity Missile: %s%%', value))
         end
     },
+    setOwnSpellEffectAlphaScroll = {
+        value = 100,
+        action = function(value, options, controller, panels, extraWidgets)
+            if g_client then g_client.setOwnSpellEffectAlpha(value / 100) end
+            panels.graphicsEffectsPanel:recursiveGetChildById('setOwnSpellEffectAlphaScroll'):setText(tr('Own Spell Effects: %s%%', value))
+        end
+    },
+    setOtherPlayerSpellEffectAlphaScroll = {
+        value = 100,
+        action = function(value, options, controller, panels, extraWidgets)
+            if g_client then g_client.setOtherPlayerSpellEffectAlpha(value / 100) end
+            panels.graphicsEffectsPanel:recursiveGetChildById('setOtherPlayerSpellEffectAlphaScroll'):setText(tr("Other Players' Effects: %s%%", value))
+        end
+    },
+    setCreatureSpellEffectAlphaScroll = {
+        value = 100,
+        action = function(value, options, controller, panels, extraWidgets)
+            if g_client then g_client.setCreatureSpellEffectAlpha(value / 100) end
+            panels.graphicsEffectsPanel:recursiveGetChildById('setCreatureSpellEffectAlphaScroll'):setText(tr('Creature Spell Effects: %s%%', value))
+        end
+    },
+    setBossAreaCreatureEffectAlphaScroll = {
+        value = 100,
+        action = function(value, options, controller, panels, extraWidgets)
+            if g_client then g_client.setBossAreaCreatureEffectAlpha(value / 100) end
+            panels.graphicsEffectsPanel:recursiveGetChildById('setBossAreaCreatureEffectAlphaScroll'):setText(tr('Boss Area Creature Spell Effects: %s%%', value))
+        end
+    },
     distFromCenScrollbar              = {
         value = 0,
         action = function(value, options, controller, panels, extraWidgets)

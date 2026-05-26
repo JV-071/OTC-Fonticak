@@ -431,8 +431,13 @@ void Game::processOpenOutfitWindow(const Outfit& currentOutfit, const std::vecto
     const auto& virtualOutfitCreature = std::make_shared<Creature>();
     virtualOutfitCreature->setDirection(Otc::South);
     virtualOutfitCreature->setOutfit(currentOutfit);
-    for (const auto& effect : m_localPlayer->getAttachedEffects())
-        virtualOutfitCreature->attachEffect(effect->clone());
+    for (const auto& effect : m_localPlayer->getAttachedEffects()) {
+        const auto e = effect->clone();
+        if (e) {
+            e->setOpacity(g_client.getOwnSpellEffectAlpha());
+            virtualOutfitCreature->attachEffect(e);
+        }
+    }
 
     // creature virtual mount outfit
     CreaturePtr virtualMountCreature;
