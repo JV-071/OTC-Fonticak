@@ -826,5 +826,39 @@ return {
     },
     actionBarBottomLocked = false,
     actionBarLeftLocked = false,
-    actionBarRightLocked = false    
+    actionBarRightLocked = false,
+    showCustomisableStatusBars = {
+        value = (g_settings.getString("statsbar_dimension") ~= "" and g_settings.getString("statsbar_dimension") or "compact") ~= "hide",
+        action = function(value, options, controller, panels, extraWidgets)
+            if modules.game_healthcircle then
+                local currentPlacement = g_settings.getString("statsbar_placement")
+                if currentPlacement == "" then currentPlacement = "top" end
+                local newDimension = "hide"
+                if value then
+                    newDimension = g_settings.getString("statsbar_dimension")
+                    if newDimension == "" or newDimension == "hide" then
+                        newDimension = "compact"
+                    end
+                end
+                modules.game_healthcircle.setStatsBarOption(newDimension, currentPlacement)
+                modules.game_healthcircle.updateStatsBar()
+            end
+        end
+    },
+    showStatusBars = {
+        value = true,
+        action = function(value, options, controller, panels, extraWidgets)
+            if modules.game_healthinfo and modules.game_healthinfo.healthManaController and modules.game_healthinfo.healthManaController.ui then
+                if value then
+                    modules.game_healthinfo.healthManaController.ui:show()
+                else
+                    modules.game_healthinfo.healthManaController.ui:hide()
+                end
+                if modules.game_healthinfo.iconTopMenu then
+                    modules.game_healthinfo.iconTopMenu:setOn(value)
+                end
+            end
+        end
+    },
+    showInfoBanner = true,
 }
