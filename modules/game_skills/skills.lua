@@ -65,6 +65,32 @@ local function setupUIButtons()
             end
         end
     end
+
+    local function setRightClickMenu(widget)
+        if not widget then return end
+        widget.onMouseRelease = function(w, mousePos, mouseButton)
+            if mouseButton == MouseRightButton then
+                return showSkillsContextMenu(w, mousePos, mouseButton)
+            end
+            return false
+        end
+    end
+
+    setRightClickMenu(skillsWindow)
+    
+    local contents = skillsWindow:recursiveGetChildById('level')
+    if contents then
+        contents = contents:getParent()
+    end
+    if contents then
+        setRightClickMenu(contents)
+        for _, child in ipairs(contents:getChildren()) do
+            setRightClickMenu(child)
+            for _, subChild in ipairs(child:getChildren()) do
+                setRightClickMenu(subChild)
+            end
+        end
+    end
 end
 
 function init()
@@ -363,17 +389,21 @@ function showSkillsContextMenu(widget, mousePos, mouseButton)
         end
     end
     
-    local buttonPos = widget:getPosition()
-    local buttonSize = widget:getSize()
-    local menuWidth = menu:getWidth()
-    
-    local buttonCenterX = buttonPos.x + buttonSize.width / 2
-    local buttonCenterY = buttonPos.y + buttonSize.height / 2
-    
-    local menuX = buttonCenterX - menuWidth
-    local menuY = buttonCenterY
-    
-    menu:display({x = menuX, y = menuY})
+    if mouseButton == MouseRightButton and mousePos then
+        menu:display(mousePos)
+    else
+        local buttonPos = widget:getPosition()
+        local buttonSize = widget:getSize()
+        local menuWidth = menu:getWidth()
+        
+        local buttonCenterX = buttonPos.x + buttonSize.width / 2
+        local buttonCenterY = buttonPos.y + buttonSize.height / 2
+        
+        local menuX = buttonCenterX - menuWidth
+        local menuY = buttonCenterY
+        
+        menu:display({x = menuX, y = menuY})
+    end
     return true
 end
 
