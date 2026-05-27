@@ -19,6 +19,8 @@ local statusLabel = nil
 
 local configManagerUrl = "http://otclient.ovh/configs.php"
 
+local updateBotTabsHeight = nil
+
 function init()
   dofile("executor")
 
@@ -79,6 +81,9 @@ function init()
   botMessages = contentsPanel.messages
   botTabs = contentsPanel.botTabs
   botTabs:setContentWidget(contentsPanel.botPanel)
+  botTabs.onGeometryChange = function(widget, oldRect, newRect)
+    updateBotTabsHeight()
+  end
 
   editWindow = g_ui.displayUI('edit')
   editWindow:hide()
@@ -154,21 +159,16 @@ function clear()
   end
 end
 
-local function updateBotTabsHeight()
-  botTabs:updateLayout()
-  local layout = botTabs:getLayout()
-  if not botTabs:isOn() or not (layout and layout:isUIGridLayout()) then
-    botTabs:setHeight(0)
-    return
+function updateBotTabsHeight()
+  if not botTabs:isOn() then
+    if botTabs:getHeight() ~= 0 then
+      botTabs:setHeight(0)
+    end
+  else
+    if botTabs:getHeight() ~= 20 then
+      botTabs:setHeight(20)
+    end
   end
-
-  local lines = layout:getNumLines()
-  if lines <= 0 then
-    botTabs:setHeight(0)
-    return
-  end
-
-  botTabs:setHeight(lines * layout:getCellSize().height)
 end
 
 function loadConfigsList()
@@ -381,8 +381,15 @@ local function copyFilesRecursively(sourcePath, targetPath)
             end
             copyFilesRecursively(file, targetFilePath)
         else
-            local contents = g_resources.fileExists(file) and g_resources.readFileContents(file) or ""
-            if contents:len() > 0 then
+            local cleanFile = file
+            if file:sub(1,1) == "/" then
+                cleanFile = file:sub(2)
+            end
+            local ok, contents = pcall(function() return g_resources.readFileContents(file) end)
+            if (not ok or not contents or contents:len() == 0) and cleanFile ~= file then
+                ok, contents = pcall(function() return g_resources.readFileContents(cleanFile) end)
+            end
+            if ok and contents and contents:len() > 0 then
                 g_resources.writeFileContents(targetFilePath, contents)
             end
         end
@@ -393,7 +400,17 @@ function createDefaultConfigs()
     local defaultConfigFiles = g_resources.listDirectoryFiles("default_configs", false, false)
     for _, configName in ipairs(defaultConfigFiles) do
         local targetDir = "/bot/" .. configName
-        if not g_resources.directoryExists(targetDir) then
+        local isConfigComplete = false
+        if g_resources.directoryExists(targetDir) then
+            local checkFile = targetDir .. (configName == "vBot_4.8" and "/_Loader.lua" or "/main.lua")
+            if g_resources.fileExists(checkFile) then
+                local ok, contents = pcall(function() return g_resources.readFileContents(checkFile) end)
+                if ok and contents and contents:len() > 0 then
+                    isConfigComplete = true
+                end
+            end
+        end
+        if not isConfigComplete then
             g_resources.makeDir(targetDir)
             if not g_resources.directoryExists(targetDir) then
                 return onError("Can't create directory: " .. targetDir)

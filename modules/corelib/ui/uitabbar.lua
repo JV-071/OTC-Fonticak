@@ -21,7 +21,7 @@ function UITabBar.create()
 end
 
 function UITabBar:onSetup()
-    self.buttonsPanel = self:getChildById('buttonsPanel')
+    self.buttonsPanel = self:getChildById('buttonsPanel') or self
 end
 
 function UITabBar:setContentWidget(widget)
