@@ -35,6 +35,7 @@ public:
 
     bool isEffect() const override { return true; }
     bool isPermanent() const { return m_permanent; }
+    bool isExpired() const { return m_animationTimer.ticksElapsed() >= m_duration; }
     bool waitFor(const EffectPtr&);
 
     EffectPtr asEffect() { return static_self_cast<Effect>(); }
