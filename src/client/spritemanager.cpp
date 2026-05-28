@@ -25,13 +25,23 @@
 #include "game.h"
 #include "gameconfig.h"
 #include "spriteappearances.h"
+#include "thingtypemanager.h"
 #include "framework/core/asyncdispatcher.h"
 #include "framework/core/filestream.h"
 #include "framework/core/graphicalapplication.h"
 #include "framework/core/resourcemanager.h"
 #include "framework/graphics/image.h"
+#include "framework/graphics/xbrz.h"
+
+#include <algorithm>
 
 SpriteManager g_sprites;
+
+namespace
+{
+constexpr int MinScaleFactor = 1;
+constexpr int MaxScaleFactor = 4;
+}
 
 FileMetadata::FileMetadata(const FileStreamPtr& file) {
     offset = file->getU32();
@@ -67,6 +77,7 @@ bool SpriteManager::loadSpr(std::string file)
     m_signature = 0;
     m_loaded = false;
     m_spritesHd = false;
+    m_baseSpriteSize = g_gameConfig.getBaseSpriteSize();
 
     const auto cwmFile = g_resources.guessFilePath(file, "cwm");
     if (g_resources.fileExists(cwmFile)) {
@@ -85,6 +96,9 @@ bool SpriteManager::loadSpr(std::string file)
 bool SpriteManager::loadRegularSpr(std::string file)
 {
     try {
+        m_baseSpriteSize = g_gameConfig.getBaseSpriteSize();
+        g_gameConfig.setSpriteScaleFactor(static_cast<uint8_t>(m_scaleFactor));
+
         m_lastFileName = g_resources.guessFilePath(file, "spr");
         load();
 
@@ -227,6 +241,9 @@ ImagePtr SpriteManager::getSpriteImage(const int id, bool& isLoading)
         }
 
         auto image = m_spritesHd ? getSpriteImageHd(id, sf->file) : getSpriteImage(id, sf->file);
+        if (!m_spritesHd && m_scaleFactor > MinScaleFactor) {
+            image = upscaleSprite(image, m_scaleFactor);
+        }
 
         sf->m_loadingState.store(SpriteLoadState::LOADED, std::memory_order_release);
 
@@ -252,6 +269,65 @@ ImagePtr SpriteManager::getSpriteImageHd(const int id, const FileStreamPtr& file
     return Image::loadPNG(buffer.data(), buffer.size());
 }
 
+void SpriteManager::setScaleFactor(int factor)
+{
+    factor = std::clamp(factor, MinScaleFactor, MaxScaleFactor);
+
+    if (m_scaleFactor == factor && g_gameConfig.getSpriteScaleFactor() == factor)
+        return;
+
+    m_scaleFactor = factor;
+    g_gameConfig.setSpriteScaleFactor(static_cast<uint8_t>(factor));
+
+    if (g_things.isDatLoaded())
+        g_things.unloadTextures();
+}
+
+ImagePtr SpriteManager::upscaleSprite(const ImagePtr& sprite, int scaleFactor) const
+{
+    if (!sprite || scaleFactor <= MinScaleFactor)
+        return sprite;
+
+    scaleFactor = std::clamp(scaleFactor, MinScaleFactor, MaxScaleFactor);
+    if (sprite->getBpp() != 4)
+        return sprite;
+
+    const int sourceWidth = sprite->getWidth();
+    const int sourceHeight = sprite->getHeight();
+    const int targetWidth = sourceWidth * scaleFactor;
+    const int targetHeight = sourceHeight * scaleFactor;
+    const int pixelCount = sourceWidth * sourceHeight;
+
+    std::vector<uint32_t> sourcePixels(pixelCount);
+    const std::vector<uint8_t>& sourceData = sprite->getPixels();
+    for (int i = 0; i < pixelCount; ++i) {
+        const int offset = i * 4;
+        sourcePixels[i] = (static_cast<uint32_t>(sourceData[offset + 3]) << 24) |
+                          (static_cast<uint32_t>(sourceData[offset + 0]) << 16) |
+                          (static_cast<uint32_t>(sourceData[offset + 1]) << 8) |
+                          static_cast<uint32_t>(sourceData[offset + 2]);
+    }
+
+    std::vector<uint32_t> targetPixels(targetWidth * targetHeight);
+    xbrz::scale(scaleFactor, sourcePixels.data(), targetPixels.data(), sourceWidth, sourceHeight, xbrz::ColorFormat::ARGB);
+
+    auto upscaledImage = std::make_shared<Image>(Size(targetWidth, targetHeight));
+    std::vector<uint8_t>& targetData = upscaledImage->getPixels();
+    bool hasTransparentPixel = false;
+    for (size_t i = 0; i < targetPixels.size(); ++i) {
+        const uint32_t pixel = targetPixels[i];
+        const size_t offset = i * 4;
+        targetData[offset + 0] = static_cast<uint8_t>((pixel >> 16) & 0xFF);
+        targetData[offset + 1] = static_cast<uint8_t>((pixel >> 8) & 0xFF);
+        targetData[offset + 2] = static_cast<uint8_t>(pixel & 0xFF);
+        targetData[offset + 3] = static_cast<uint8_t>((pixel >> 24) & 0xFF);
+        hasTransparentPixel = hasTransparentPixel || targetData[offset + 3] != 0xFF;
+    }
+    upscaledImage->setTransparentPixel(sprite->hasTransparentPixel() || hasTransparentPixel);
+
+    return upscaledImage;
+}
+
 uint16_t readU16FromBuffer(const uint8_t* data, size_t& offset) {
     uint16_t val = data[offset] | (data[offset + 1] << 8);
     offset += 2;
@@ -273,7 +349,7 @@ ImagePtr SpriteManager::getSpriteImage(const int id, const FileStreamPtr& file)
         file->skip(3); // Skip RGB color key
 
         const uint16_t pixelDataSize = file->getU16();
-        const int spriteSize = g_gameConfig.getSpriteSize();
+        const int spriteSize = m_baseSpriteSize;
         const int totalPixels = spriteSize * spriteSize;
         const int maxWriteSize = totalPixels * 4;
 

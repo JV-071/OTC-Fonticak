@@ -131,7 +131,7 @@ void GameConfig::loadFonts() {
 void GameConfig::loadGameNode(const OTMLNodePtr& mainNode) {
     for (const auto& node : mainNode->children()) {
         if (node->tag() == "sprite-size")
-            m_spriteSize = node->value<int>();
+            setBaseSpriteSize(static_cast<uint8_t>(node->value<int>()));
         else if (node->tag() == "last-supported-version")
             m_lastSupportedVersion = node->value<int>();
         else if (node->tag() == "map")

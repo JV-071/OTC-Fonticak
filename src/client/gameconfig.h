@@ -34,7 +34,17 @@ public:
     void init();
     void terminate();
 
-    uint8_t getSpriteSize() { return m_spriteSize; }
+    uint8_t getSpriteSize() const { return m_spriteSize; }
+    uint8_t getBaseSpriteSize() const { return m_baseSpriteSize; }
+    uint8_t getSpriteScaleFactor() const { return m_spriteScaleFactor; }
+    void setBaseSpriteSize(uint8_t size) {
+        m_baseSpriteSize = size == 0 ? 1 : size;
+        updateSpriteSize();
+    }
+    void setSpriteScaleFactor(uint8_t factor) {
+        m_spriteScaleFactor = factor == 0 ? 1 : factor;
+        updateSpriteSize();
+    }
     uint16_t getLastSupportedVersion() const { return m_lastSupportedVersion; }
     bool drawTyping() const { return m_drawTyping; }
     std::string getTypingIcon() const { return m_typingIcon; }
@@ -87,9 +97,15 @@ private:
     void loadCreatureNode(const OTMLNodePtr& node);
     void loadPlayerNode(const OTMLNodePtr& node);
     void loadRenderNode(const OTMLNodePtr& node);
+    void updateSpriteSize() {
+        const int scaledSize = m_baseSpriteSize * m_spriteScaleFactor;
+        m_spriteSize = static_cast<uint8_t>(scaledSize > 255 ? 255 : scaledSize);
+    }
 
     // Game
+    uint8_t m_baseSpriteSize{ 32 };
     uint8_t m_spriteSize{ 32 };
+    uint8_t m_spriteScaleFactor{ 1 };
     uint16_t m_lastSupportedVersion{ 1511 };
     bool m_drawTyping{ false };
     std::string m_typingIcon{ "/images/game/console/typing" };

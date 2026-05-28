@@ -403,6 +403,18 @@ return {
             panels.graphicsPanel:recursiveGetChildById('antialiasingMode'):setCurrentOptionByData(value, true)
         end
     },
+    hdGraphics                        = {
+        value = true,
+        action = function(value, options, controller, panels, extraWidgets)
+            if g_sprites and g_sprites.setScaleFactor then
+                g_sprites.setScaleFactor(value and 2 or 1)
+            end
+
+            if panels.gameMapPanel then
+                panels.gameMapPanel:setAntiAliasingMode(options.antialiasingMode.value)
+            end
+        end
+    },
     shadowFloorIntensity              = {
         value = 30,
         action = function(value, options, controller, panels, extraWidgets)
