@@ -8,6 +8,7 @@ exportCodeWindow = nil
 deletePresetWindow = nil
 checkSavePresetWindow = nil
 selectedNewPresetRadio = nil
+wheelButton = nil
 local summaryVisible = false
 
 wheelPanel = nil
@@ -15,6 +16,45 @@ centerReferencePoint = nil
 
 if not SkillwheelStringsLibrary then
   SkillwheelStringsLibrary = {}
+end
+
+local function setWheelButtonState(state)
+  if wheelButton then
+    wheelButton:setOn(state)
+  end
+end
+
+local function requestOpenWheel()
+  local player = g_game.getLocalPlayer()
+  if not player then
+    return false
+  end
+
+  if g_game.openWheel then
+    g_game.openWheel(player:getId())
+    return true
+  end
+
+  if g_game.openWheelOfDestiny then
+    g_game.openWheelOfDestiny(player:getId())
+    return true
+  end
+
+  return false
+end
+
+local function createWheelButton()
+  if modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
+    return modules.game_mainpanel.addToggleButton('wheelButton', tr('Wheel of Destiny'),
+      '/images/options/button_skillwheeldialog', toggle, false, 10)
+  end
+
+  if modules.client_topmenu and modules.client_topmenu.addRightGameToggleButton then
+    return modules.client_topmenu.addRightGameToggleButton('wheelButton', tr('Wheel of Destiny'),
+      '/images/options/button_skillwheeldialog', toggle, false, 10)
+  end
+
+  return nil
 end
 
 function init()
@@ -86,11 +126,8 @@ function init()
     onResourceBalance = onResourceBalance,
   })
   
-  if modules.game_mainpanel then
-    wheelButton = modules.game_mainpanel.addToggleButton('wheelButton', tr('Wheel of Destiny'),   
-      '/images/options/button_skillwheeldialog', toggle, false, 10)  
-    wheelButton:setOn(false)
-  end
+  wheelButton = createWheelButton()
+  setWheelButtonState(false)
 end
 
 function terminate()
@@ -102,6 +139,11 @@ function terminate()
     onResourceBalance = onResourceBalance
   })
 
+  if wheelButton then
+    wheelButton:destroy()
+    wheelButton = nil
+  end
+
   if wheelWindow then
     wheelWindow:destroy()
     wheelWindow = nil
@@ -109,10 +151,12 @@ function terminate()
 end
 
 function toggle()
+  if not wheelWindow then
+    return
+  end
+
   if wheelWindow:isVisible() then
-    wheelWindow:hide()
-    wheelWindow:ungrabMouse()
-    wheelWindow:ungrabKeyboard()
+    hide()
   else
     wheelWindow:focus()
     loadMenu('wheelMenu')
@@ -123,16 +167,26 @@ function toggle()
       fragmentWindow:hide()
     end
 
-    g_game.openWheel(g_game.getLocalPlayer():getId())
+    if not requestOpenWheel() then
+      setWheelButtonState(false)
+      return
+    end
+
+    setWheelButtonState(true)
     wheelWindow:recursiveGetChildById('tabContent'):setVisible(false)
     WheelOfDestiny.onRemoveClick()
   end
 end
 
 function hide()
+  if not wheelWindow then
+    return
+  end
+
   wheelWindow:ungrabMouse()
   wheelWindow:ungrabKeyboard()
   wheelWindow:hide()
+  setWheelButtonState(false)
 end
 
 function onGameEnd()
@@ -163,7 +217,9 @@ function onGameEnd()
 end
 
 function show()
-  g_game.openWheel(g_game.getLocalPlayer():getId())
+  if requestOpenWheel() then
+    setWheelButtonState(true)
+  end
 end
 
 -- check click point
