@@ -147,6 +147,7 @@ void UITextEdit::drawSelf(const DrawPoolType drawPane)
 
                 if (i >= static_cast<int>(m_glyphsPositionsCache.size())) continue;
                 uint8_t glyph = static_cast<uint8_t>(m_displayedText[i]);
+                if (glyph < 32) continue;
                 Point baselinePos = textScreenOffset + m_glyphsPositionsCache[i];
                 Point pos(baselinePos.x + glyphsOffset[glyph].x, baselinePos.y);
                 int width = 0;
@@ -173,8 +174,11 @@ void UITextEdit::drawSelf(const DrawPoolType drawPane)
                     }
                 }
 
-                if (width > 0)
-                    m_glyphsSelectBgRectCache.emplace_back(Rect(pos.x, pos.y, width, lineHeight));
+                if (width > 0) {
+                    const Rect bgRect = Rect(pos.x, pos.y, width, lineHeight).intersection(m_drawArea);
+                    if (bgRect.isValid())
+                        m_glyphsSelectBgRectCache.push_back(bgRect);
+                }
             }
         }
 
@@ -185,7 +189,7 @@ void UITextEdit::drawSelf(const DrawPoolType drawPane)
             g_drawPool.addTexturedRect(it.first, texture, it.second, m_selectionColor);
     }
 
-    if (isExplicitlyEnabled() && getProp(PropCursorVisible) && getProp(PropCursorInRange) && isActive() && m_cursorPos >= 0) {
+    if (isExplicitlyEnabled() && getProp(PropCursorVisible) && getProp(PropEditable) && getProp(PropCursorInRange) && isActive() && m_cursorPos >= 0) {
         const int cursorVis = m_srcToVis.empty()
             ? std::clamp(m_cursorPos, 0, textLength)
             : std::clamp(m_srcToVis[std::clamp(m_cursorPos, 0, static_cast<int>(m_text.length()))], 0, textLength);
@@ -1361,7 +1365,7 @@ void UITextEdit::onFocusChange(const bool focused, const Fw::FocusReason reason)
             setCursorPos(m_text.length());
         else
             blinkCursor();
-        update(true);
+        update(reason == Fw::KeyboardFocusReason);
 #ifdef ANDROID
         // Only show keyboard on user interaction (mouse/touch), not programmatic focus
         if (getProp(PropEditable) && reason == Fw::MouseFocusReason) {
