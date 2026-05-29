@@ -442,7 +442,7 @@ function WheelOfDestiny.onMouseMove(widget, position, offset)
   bar:setValue(pointInvested, 0, bonus.maxPoints)
   bar:setText(pointInvested.." / ".. bonus.maxPoints)
 
-  bar:setImageSource("/game_cyclopedia/images/ui/mosnter-bar")
+  bar:setImageSource("/images/game/wheel/progressBar")
   bar:setPercent((pointInvested * 100 / bonus.maxPoints))
 
   wheelOfDestinyWindow.info.tabContent.information.tabContent.dedication2:setText(getDedicationBonus(index))
