@@ -41,7 +41,8 @@ UIWidget
 
   UIWidget
     id: blackBG01
-    image-source: /images/modern_ui/image3498397
+    image-source: /images/modern_ui/image1015925
+    image-border: 1
     size: 104 20
     anchors.bottom: parent.bottom
     anchors.left: parent.left
@@ -61,4 +62,4 @@ UIWidget
       anchors.bottom: parent.bottom
       anchors.right: prev.left
       margin-bottom: 2
-      margin-right: 2
+      margin-right: 5

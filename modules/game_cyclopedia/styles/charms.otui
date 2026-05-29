@@ -1,339 +1,456 @@
-MonsterCharm < UIWidget
-  size: 132 16
-  font: verdana-11px-antialised
-  text-align: left
-  text-offset: 1 0
+CharmListLabel < Label
+  font: Verdana Bold-11px
+  color: #c0c0c0
+  text-offset: 2 0
+  focusable: true
+  phantom: false
+  text-overflow-length: 19
 
-Charm < UIWidget
-  font: verdana-11px-antialised
-  opacity: 1
-  color: #dfdfdf
+  $focus:
+    background-color: #ffffff22
+    color: #f4f4f4
+
+  $!focus:
+    background-color: #484848
+    color: #c0c0c0
+
+CharmWidget < UIWidget
+  size: 151 93
+  !text: tr('Unknown')
+  font: Verdana Bold-11px
+  color: #909090
   text-offset: 0 1
   text-align: top
-  image-source: /images/modern_ui/window2
-  image-border: 6
-  image-border-top: 1
+  image-source: /images/game/cyclopedia/ui/charm-bg
+
+  $focus:
+    border-width: 2
+    border-color: white
+
+  $!focus:
+    border-width: 0
+    border-color: alpha
 
   UIWidget
-    id: charmContainer
-    size: 37 37
-    padding: 1
+    id: charmImage
+    size: 32 32
     anchors.top: parent.top
     anchors.left: parent.left
-    margin-top: 23
-    margin-left: 26
-    image-source: /images/ui/item/none
-    font: verdana-11px-rounded
-    border-color: white
-    color: white
+    margin-top: 40
+    margin-left: 25
+    image-source: /images/game/cyclopedia/monster-bonus-effects/monster-bonus-effects-1
 
   UIWidget
-    id: charmRune
-    anchors.top: prev.top
-    anchors.left: prev.left
-    image-source: /images/game/charms/10
-    font: verdana-11px-rounded
-    border-color: white
-    color: white
-
-  UIWidget
-    id: charmDisabler
-    size: 35 35
-    padding: 1
-    anchors.top: charmRune.top
-    anchors.left: charmRune.left
-    margin-top: 1
-    margin-left: 1
+    id: opacityItem
+    size: 40 40
+    anchors.top: parent.top
+    anchors.left: parent.left
+    margin-top: 36
+    margin-left: 21
     image-source: /images/modern_ui/disabled
-    font: verdana-11px-rounded
-    border-color: white
-    visible: true
+    phantom: true
 
   UIWidget
-    id: charmPriceContainer
-    image-source: /images/modern_ui/image3498397
-    size: 73 20
-    anchors.top: charmRune.bottom
-    anchors.horizontalCenter: charmRune.horizontalCenter
-    margin-top: 7
-
-    Label
-      id: charmPrice
-      text-align: center
-      color: #d33c3c
-      anchors.bottom: parent.bottom
-      anchors.horizontalCenter: parent.horizontalCenter
-      width: 40
-      margin-bottom: 3
-      margin-right: 2
-
-    UIWidget
-      id: charmIcon
-      image-source: /images/modern_ui/charm_big
-      anchors.top: prev.top
-      anchors.right: prev.right
-      margin-right: -15
-      margin-top: 1
-
-  UIWidget
-    id: charmMonsterContainer
-    image-source: /images/modern_ui/monster_container
+    id: level
+    size: 46 52
     anchors.top: parent.top
-    anchors.right: parent.right
-    margin-right: 9
-    margin-top: 23
-    
-    UICreature
-      id: charmMonster
-      size: 48 48
-      anchors.horizontalCenter: parent.horizontalCenter
-      anchors.verticalCenter: parent.verticalCenter
-
-  UIWidget
-    id: borderContainer
-    size: 165 94
-    anchors.top: parent.top
-    anchors.bottom: parent.bottom
-    anchors.right: parent.right
     anchors.left: parent.left
+    margin-top: 30
+    margin-left: 18
+    phantom: true
+    visible: false
 
-  Label
-    id: unlocked
+  UICreature
+    id: creature
+    size: 64 64
+    anchors.top: parent.top
+    anchors.right: parent.right
+    margin-top: 24
+    margin-right: 7
+    animate: true
+    phantom: true
 
 UIWidget
+  id: charmDataPanel
   size: 668 452
   visible: false
 
-  UIWidget
-    id: informationContainer
-    size: 163 415
-    !text: tr('Information')
-    opacity: 1
-    color: #909090
-    text-offset: 0 1
-    image-source: /images/modern_ui/window2
-    text-align: top
-    image-border: 6
-    image-border-top: 15
-    anchors.bottom: horizontalSeparator.top
+  Panel
+    id: informationPanel
+    size: 550 117
+    anchors.top: parent.top
     anchors.left: parent.left
-    margin-bottom: 6
+    image-source: /images/ui/t2pixel-up-frame-borderimage
+    image-border: 18
 
     Label
-      id: charmDescription
-      width: 155
-      font: verdana-11px-rounded
+      id: title
+      anchors.top: parent.top
+      anchors.horizontalCenter: parent.horizontalCenter
+      margin-top: 1
+      !text: tr('Charm Information')
+      font: Verdana Bold-11px
+      color: #909090
       text-auto-resize: true
-      text-wrap: true
-      text-align: left
-      anchors.top: parent.top
-      anchors.left: parent.left
-      anchors.right: parent.right
-      margin-top: 23
-      margin-left: 7
-      margin-right: 7
 
-    UIWidget
-      id: charmContainer
-      size: 37 37
-      padding: 1
-      anchors.top: parent.top
-      anchors.left: parent.left
-      margin-left: 28
-      margin-top: 156
-      image-source: /images/ui/item/none
-      font: verdana-11px-rounded
-      border-color: white
-      color: white
-
-    UIWidget
-      id: charmRune
-      anchors.top: parent.top
-      anchors.left: parent.left
-      margin-left: 28
-      margin-top: 155
-      image-source: /images/game/charms/10
-      font: verdana-11px-rounded
-      border-color: white
-      color: white
-
-    Button
-      id: unlockCharmButton
-      size: 78 20
-      font: cipsoftFont
-      text-align: center
-      padding: 1
-      anchors.top: prev.bottom
-      anchors.horizontalCenter: prev.horizontalCenter
-      margin-top: 8
-
-    UIWidget
-      id: monsterContainer
-      image-source: /images/modern_ui/monster_container
-      anchors.top: charmContainer.top
-      anchors.right: parent.right
-      margin-right: 7
-
-      UICreature
-        id: charmMonster
-        size: 48 48
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.verticalCenter: parent.verticalCenter
-
-    UIWidget
-      id: storeButton
-      image-source: /images/modern_ui/store_button
-      size: 26 20
-      anchors.top: prev.bottom
-      anchors.right: prev.right
-      margin-top: 3
-      image-clip: 0 0 26 20
-
-      $pressed:
-        image-clip: 0 20 26 20
-
-      $checked:
-        image-clip: 0 20 26 20
-
-    UIWidget
-      id: infoContainer
-      image-source: /images/modern_ui/info
-      anchors.verticalCenter: prev.verticalCenter
-      anchors.right: prev.left
-      margin-right: 6
-
-    UIWidget
-      id: charmPriceContainer
-      image-source: /images/modern_ui/image3498397
-      size: 78 20
-      anchors.top: prev.top
-      anchors.horizontalCenter: unlockCharmButton.horizontalCenter
-      margin-top: -3
+    Panel
+      id: charmContent
+      anchors.fill: parent
+      margin: 20 7 5 6
 
       Label
-        id: charmInfoPrice
-        width: 35
-        text-align: center
-        color: #d33c3c
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        margin-bottom: 3
-        margin-right: 2
+        id: informationText
+        size: 164 90
+        font: Verdana Bold-11px
+        color: #c0c0c0
+        anchors.top: parent.top
+        anchors.left: parent.left
+        text-align: top-left
+        text-offset: 1 1
+        text-wrap: true
 
       UIWidget
-        id: charmIcon
-        image-source: /images/modern_ui/charm_big
-        anchors.top: prev.top
-        anchors.right: prev.right
-        margin-right: -15
+        id: charmPanel
+        size: 42 42
+        anchors.bottom: parent.bottom
+        anchors.left: informationText.right
+        margin-bottom: 25
+        margin-left: 7
+        image-source: /images/ui/textedit
+
+        UIWidget
+          id: charmImage
+          size: 32 32
+          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.verticalCenter: parent.verticalCenter
+
+      UIWidget
+        id: level
+        size: 46 52
+        anchors.bottom: parent.bottom
+        anchors.left: charmPanel.left
+        margin-bottom: 20
+        margin-left: -2
+        phantom: true
+        visible: false
+
+      Button
+        id: unlockButton
+        size: 84 20
+        anchors.top: parent.top
+        anchors.left: charmPanel.right
+        margin-left: 6
+        !text: tr('Unlock')
+        font: cipsoftFont
+        color: #c0c0c0
+
+      Panel
+        id: charmBgSlot
+        size: 84 20
+        anchors.top: unlockButton.bottom
+        anchors.left: unlockButton.left
+        margin-top: 5
+        image-source: /images/game/cyclopedia/ui/text-slot
+        image-border: 2
+        image-clip: 0 0 32 20
+
+        Label
+          id: charmInfoAmount
+          !text: tr('0')
+          font: Verdana Bold-11px
+          color: #c0c0c0
+          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 1
+          margin-top: 1
+          text-auto-resize: true
+
+        UIWidget
+          id: imagetType
+          size: 12 12
+          image-source: /images/game/cyclopedia/ui/charm-points
+          anchors.verticalCenter: parent.verticalCenter
+          anchors.left: charmInfoAmount.right
+          margin-left: 2
+          margin-top: 1
+
+      Button
+        id: clearButton
+        size: 84 20
+        anchors.top: charmBgSlot.bottom
+        anchors.left: charmBgSlot.left
+        margin-top: 5
+        !text: tr('Clear Charm')
+        font: cipsoftFont
+        color: #c0c0c0
+
+      Panel
+        id: goldClearSlot
+        size: 84 20
+        anchors.top: clearButton.bottom
+        anchors.left: clearButton.left
+        margin-top: 5
+        image-source: /images/game/cyclopedia/ui/text-slot
+        image-border: 2
+        image-clip: 0 0 32 20
+
+        Label
+          id: goldClearAmount
+          !text: tr('0')
+          font: Verdana Bold-11px
+          color: #c0c0c0
+          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 1
+          margin-top: 1
+          text-auto-resize: true
+
+        UIWidget
+          id: imageType
+          size: 9 9
+          image-source: /images/game/cyclopedia/icons/icon-goldcoin
+          anchors.verticalCenter: parent.verticalCenter
+          anchors.left: goldClearAmount.right
+          margin-left: 2
+          margin-top: 1
+
+      TextEdit
+        id: searchTextCharm
+        size: 148 20
+        anchors.top: parent.top
+        anchors.left: unlockButton.right
+        margin-left: 6
+        !placeholder: tr('Type to search')
+        font: Verdana Bold-11px
+        placeholder-color: #707070
+
+      Button
+        id: clearSlotButton
+        anchors.top: searchTextCharm.top
+        anchors.right: searchTextCharm.right
         margin-top: 1
+        margin-right: 1
+        size: 18 18
+        image-source: /images/store/button-erase-small-up
+        image-clip: 0 0 18 18
 
-    Label
-      width: 163
-      font: verdana-11px-rounded
-      !text: tr('Select creature:')
-      text-auto-resize: true
-      text-wrap: true
-      text-align: left
-      anchors.top: prev.bottom
-      anchors.left: parent.left
-      margin-top: 10
-      margin-left: 7
+        $pressed:
+          image-source: /images/store/button-erase-small-down
+          image-clip: 0 0 18 18
 
-    UIWidget
-      id: monsterSelecterBox
-      image-source: /images/modern_ui/select_creaturebox
-      anchors.top: prev.bottom
-      anchors.right: parent.right
-      margin-top: 3
-      margin-right: 7
+      TextList
+        id: monsterList
+        size: 148 67
+        anchors.top: searchTextCharm.bottom
+        anchors.left: searchTextCharm.left
+        margin-top: 6
+        focusable: true
+        vertical-scrollbar: monsterListScrollBar
 
-    UIScrollArea
-      id: monsterSelecter
-      size: 240 98
-      anchors.top: prev.top
-      anchors.left: prev.left
-      anchors.right: prev.right
-      margin-top: 1
-      margin-left: 1
-      vertical-scrollbar: scrollList
-      layout: verticalBox
-      padding: 2
-      auto-focus: none
-      layout:
-        type: grid
-        cell-size: 132 16
-        flow: true
-        auto-spacing: true
+      VerticalScrollBar
+        id: monsterListScrollBar
+        anchors.top: monsterList.top
+        anchors.right: monsterList.right
+        anchors.bottom: monsterList.bottom
+        margin: 1 1 1 0
+        step: 14
+        pixels-scroll: true
 
-    VerticalScrollBar
-      id: scrollList
-      anchors.top: monsterSelecter.top
-      anchors.bottom: monsterSelecter.bottom
-      anchors.left: monsterSelecter.right
-      margin-left: -13
-      step: 1
-      pixels-scroll: true
+      Button
+        id: selectCreatureButton
+        size: 78 20
+        anchors.top: parent.top
+        anchors.right: parent.right
+        !text: tr('Select Creature')
+        font: cipsoftFont
+        color: #c0c0c0
 
-    Label
-      width: 163
-      font: verdana-11px-rounded
-      !text: tr('Search:')
-      text-auto-resize: true
-      text-wrap: true
-      text-align: left
-      anchors.top: monsterSelecterBox.bottom
-      anchors.left: parent.left
-      margin-top: 5
-      margin-left: 7
+      UIWidget
+        id: creatureWidget
+        size: 78 66
+        anchors.top: selectCreatureButton.bottom
+        anchors.right: parent.right
+        margin-top: 5
+        image-source: /images/ui/textedit
+        image-border: 1
 
-    TextEdit
-      id: searchInput
-      anchors.top: prev.bottom
-      anchors.left: parent.left
-      margin-left: 7
-      margin-top: 2
-      width: 149
+        UICreature
+          id: creature
+          size: 64 64
+          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.verticalCenter: parent.verticalCenter
+          background-color: #404040
+          animate: true
 
-  UIWidget
-    id: charmsContainer
-    size: 500 415
-    opacity: 1
-    image-source: /images/modern_ui/black_border
-    text-align: top
-    image-border: 6
-    image-border-top: 15
-    anchors.bottom: horizontalSeparator.top
-    anchors.left: prev.right
-    margin-bottom: 6
-    margin-left: 6
+  Panel
+    id: resetPanel
+    size: 113 117
+    anchors.top: parent.top
+    anchors.right: parent.right
+    image-source: /images/ui/2pixel-up-frame-borderimage
+    image-border: 10
 
-    UIScrollArea
-      id: charmSelecter
+    Panel
+      id: resetContent
+      anchors.fill: parent
+      margin: 7 6 8 7
+
+      Label
+        id: resetText
+        size: 105 27
+        anchors.top: parent.top
+        anchors.left: parent.left
+        font: Verdana Bold-11px
+        color: #c0c0c0
+        text-align: top-left
+        text-wrap: true
+        !text: tr('You can assign 0 more Charms')
+
+      Button
+        id: openStore
+        size: 78 20
+        anchors.top: resetText.bottom
+        anchors.right: parent.right
+        margin-top: 6
+        margin-right: 4
+        image-source: /images/ui/buttons-blue
+        icon: /images/store/icon-tibiastore
+
+      UIWidget
+        id: infoHover
+        size: 12 12
+        anchors.top: openStore.top
+        anchors.right: openStore.left
+        margin-right: 7
+        margin-top: 4
+        image-source: /images/skin/show-gui-help-grey
+        !tooltip: tr('Charm expansion is visual-only in this client.')
+
+      Button
+        id: resetCharmsButton
+        size: 100 20
+        anchors.top: openStore.bottom
+        anchors.right: parent.right
+        margin-top: 6
+        !text: tr('Reset All Charms')
+        font: cipsoftFont
+        color: #c0c0c0
+
+      Panel
+        id: goldResetSlot
+        size: 100 20
+        anchors.top: resetCharmsButton.bottom
+        anchors.left: resetCharmsButton.left
+        margin-top: 6
+        image-source: /images/game/cyclopedia/ui/text-slot
+        image-border: 2
+        image-clip: 0 0 32 20
+
+        Label
+          id: goldResetAmount
+          !text: tr('0')
+          font: Verdana Bold-11px
+          color: #c0c0c0
+          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.verticalCenter: parent.verticalCenter
+          margin-left: 1
+          margin-top: 1
+          text-auto-resize: true
+
+        UIWidget
+          id: imagetType
+          size: 9 9
+          image-source: /images/game/cyclopedia/icons/icon-goldcoin
+          anchors.verticalCenter: parent.verticalCenter
+          anchors.left: goldResetAmount.right
+          margin-left: 2
+          margin-top: 1
+
+  Panel
+    id: charmsPanel
+    size: 668 294
+    anchors.top: informationPanel.bottom
+    anchors.left: parent.left
+    margin-top: 5
+    image-source: /images/ui/2pixel-up-frame-borderimage
+    image-border: 10
+    padding: 4
+
+    Panel
+      id: optionsBar
+      size: 660 38
+      image-source: /images/ui/back-icons
+      image-border: 1
       anchors.top: parent.top
-      anchors.bottom: parent.bottom
       anchors.left: parent.left
       anchors.right: parent.right
-      margin-top: 1
-      margin-bottom: 1
-      margin-left: 1
-      margin-right: 13
-      vertical-scrollbar: scrollList
-      layout: verticalBox
-      padding: 1
-      auto-focus: none
+
+      Button
+        id: majorMenu
+        anchors.top: parent.top
+        anchors.left: parent.left
+        size: 330 36
+        margin-left: 1
+        margin-top: 1
+        image-source: /images/game/cyclopedia/ui/charm-options
+        image-clip: 0 0 330 36
+
+        $hover !on:
+          image-clip: 0 0 330 36
+
+        $pressed:
+          image-clip: 0 36 330 36
+
+        $on:
+          image-clip: 0 36 330 36
+
+      Button
+        id: minorMenu
+        anchors.top: parent.top
+        anchors.right: parent.right
+        size: 328 36
+        margin-right: 1
+        margin-top: 1
+        image-source: /images/game/cyclopedia/ui/charm-options
+        image-clip: 330 0 328 36
+
+        $hover !on:
+          image-clip: 330 0 328 36
+
+        $pressed:
+          image-clip: 330 36 328 36
+
+        $on:
+          image-clip: 330 36 328 36
+
+    TextList
+      id: charmListPanel
+      height: 243
+      anchors.top: optionsBar.bottom
+      anchors.left: parent.left
+      anchors.right: parent.right
+      margin-top: 6
+      image-source: /images/ui/background
+      image-repeated: true
+      margin-left: 2
+      margin-right: 2
+      vertical-scrollbar: charmListScrollBar
+      padding-top: 5
+      padding-left: 5
       layout:
         type: grid
-        cell-size: 160 99
+        num-columns: 3
+        cell-size: 151 93
+        cell-spacing: 9
         flow: true
-        auto-spacing: true
 
     VerticalScrollBar
-      id: scrollList
-      anchors.top: charmSelecter.top
-      anchors.bottom: charmSelecter.bottom
-      anchors.left: charmSelecter.right
-      step: 158
+      id: charmListScrollBar
+      anchors.top: charmListPanel.top
+      anchors.bottom: charmListPanel.bottom
+      anchors.right: charmListPanel.right
+      margin: 1 1 1 0
+      step: 30
       pixels-scroll: true
 
   Button
@@ -346,24 +463,25 @@ UIWidget
     @onClick: modules.game_cyclopedia.toggle()
 
   Button
-    id: closeButton
+    id: backButton
     size: 43 20
     anchors.bottom: parent.bottom
-    anchors.right: prev.left
+    anchors.right: closeButton.left
+    margin-right: 6
     !text: tr('Back')
     font: cipsoftFont
-    margin-right: 6
 
   HorizontalSeparator
     id: horizontalSeparator
-    anchors.bottom: prev.top
+    anchors.bottom: closeButton.top
     anchors.left: parent.left
     anchors.right: parent.right
     margin-bottom: 12
 
   UIWidget
     id: blackBG01
-    image-source: /images/modern_ui/image3498397
+    image-source: /images/modern_ui/image1015925
+    image-border: 1
     size: 104 20
     anchors.bottom: parent.bottom
     anchors.left: parent.left
@@ -381,16 +499,17 @@ UIWidget
       id: goldPoints
       text-align: right
       anchors.bottom: parent.bottom
-      anchors.right: prev.left
+      anchors.right: goldIcon.left
       margin-bottom: 2
-      margin-right: 2
+      margin-right: 5
 
   UIWidget
     id: blackBG02
-    image-source: /images/modern_ui/image3498397
+    image-source: /images/modern_ui/image1015925
+    image-border: 1
     size: 104 20
     anchors.bottom: parent.bottom
-    anchors.left: prev.right
+    anchors.left: blackBG01.right
     margin-left: 6
     margin-bottom: 1
 
@@ -406,6 +525,7 @@ UIWidget
       id: charmAmount
       text-align: right
       anchors.bottom: parent.bottom
-      anchors.right: prev.left
+      anchors.right: charmIcon.left
       margin-bottom: 2
       margin-right: 2
+      width: 80

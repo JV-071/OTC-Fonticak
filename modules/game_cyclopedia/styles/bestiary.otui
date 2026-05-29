@@ -8,9 +8,14 @@ BestiaryStars < UIWidget
 
 BestiaryLootItem < UIWidget
   size: 34 34
-  image-source: /images/modern_ui/item/none
-  $disabled:
-    image-source: /images/modern_ui/emptySlot
+
+  Panel
+    id: image
+    size: 34 34
+    image-source: /images/ui/34-button
+    image-clip: 0 0 34 34
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
 
   UIItem
     id: item
@@ -20,6 +25,7 @@ BestiaryLootItem < UIWidget
     virtual: true
     priceable: true
     show-count: false
+    virtual-count: true
     draggable: false
 
   Label
@@ -39,17 +45,19 @@ BestiaryLoot < UIWidget
 
   Label
     id: rarityLevel
-    font: verdana-11px-rounded
+    font: Verdana Bold-11px
+    color: #c0c0c0
     anchors.verticalCenter: c_loot01.verticalCenter
     anchors.left: parent.left
-    margin-left: 20
+    margin-left: 4
+    text-auto-resize: true
 
   BestiaryLootItem
     id: c_loot01
     anchors.top: parent.top
     anchors.left: parent.left
     margin-top: 5
-    margin-left: 104
+    margin-left: 105
 
   BestiaryLootItem
     id: c_loot02
@@ -143,6 +151,20 @@ BestiaryOccurrence < UIWidget
   $!on:
     image-source: /images/game/bestiary/ocurrence_disabled
 
+BestiaryCharmSlot < UIWidget
+  size: 37 37
+  padding: 1
+  image-source: /images/ui/item/none
+  border-color: #161616
+  border-width: 1
+
+  UIWidget
+    id: charmRune
+    anchors.fill: parent
+    margin: 1
+    phantom: true
+    visible: false
+
 BestiaryMonster < UIWidget
   id: bestiaryMonster
   anchors.top: parent.top
@@ -172,17 +194,39 @@ BestiaryMonster < UIWidget
   CheckBox
     id: trackKills
     !text: tr('Track kills')
-    font: cipsoftFont
+    font: verdana-11px-rounded-lowspace
     anchors.top: bestiaryCreature.bottom
     anchors.left: bestiaryCreature.left
     margin-top: 15
     width: 150
+    height: 16
+    text-offset: 15 -2
+
+  BestiaryCharmSlot
+    id: charmSlot1
+    anchors.top: charmAmountIcon.bottom
+    anchors.left: charmAmountIcon.left
+    margin-top: 14
+
+  BestiaryCharmSlot
+    id: charmSlot2
+    anchors.top: charmSlot1.top
+    anchors.left: charmSlot1.right
+    margin-left: 4
+
+  Button
+    id: assignCharmButton
+    size: 86 20
+    anchors.verticalCenter: charmSlot1.verticalCenter
+    anchors.left: charmSlot2.right
+    margin-left: 8
+    !text: tr('Assign Charm')
+    font: cipsoftFont
 
   Label
-    anchors.top: parent.top
-    anchors.left: prev.right
-    margin-top: 25
-    margin-left: 90
+    anchors.bottom: progressBarImage.top
+    anchors.horizontalCenter: progressBarImage.horizontalCenter
+    margin-bottom: 3
     text: Total Kills
     font: verdana-11px-rounded
 
@@ -779,7 +823,8 @@ UIWidget
 
   UIWidget
     id: blackBG01
-    image-source: /images/modern_ui/image3498397
+    image-source: /images/modern_ui/image1015925
+    image-border: 1
     size: 104 20
     anchors.bottom: parent.bottom
     anchors.left: parent.left
@@ -799,11 +844,12 @@ UIWidget
       anchors.bottom: parent.bottom
       anchors.right: prev.left
       margin-bottom: 2
-      margin-right: 2
+      margin-right: 5
 
   UIWidget
     id: blackBG02
-    image-source: /images/modern_ui/image3498397
+    image-source: /images/modern_ui/image1015925
+    image-border: 1
     size: 104 20
     anchors.bottom: parent.bottom
     anchors.left: prev.right

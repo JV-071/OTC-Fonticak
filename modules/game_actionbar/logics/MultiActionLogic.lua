@@ -371,7 +371,6 @@ function updateMultiButtonState(button)
     end
 
     local action, actionIndex = findNextAvailableAction(button.cache.multiActions, button)
-    g_logger.info("updateMultiButtonState: button=" .. tostring(button:getId()) .. " lastMultiIndex=" .. tostring(button.cache.lastMultiIndex or 0) .. " chosenIndex=" .. tostring(actionIndex or "nil"))
     if not action then
         action = button.cache.multiActions[1]
         actionIndex = 1

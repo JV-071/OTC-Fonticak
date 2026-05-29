@@ -328,10 +328,7 @@ function onExecuteAction(button, isPress)
     end
 
     if button.cache and button.cache.activeMultiIndex then
-        g_logger.info("onExecuteAction: button=" .. tostring(button:getId()) .. " activeMultiIndex=" .. tostring(button.cache.activeMultiIndex))
         button.cache.lastMultiIndex = button.cache.activeMultiIndex
-    else
-        g_logger.info("onExecuteAction: button=" .. tostring(button:getId()) .. " activeMultiIndex=nil")
     end
 
     if action == UseTypes["Equip"] and button.item then

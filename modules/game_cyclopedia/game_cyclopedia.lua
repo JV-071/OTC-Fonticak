@@ -89,11 +89,23 @@ function toggle()
 	if window:isVisible() then
 		window:hide()
 	else
-		toggleWindow("bestiary") -- We init on bestiary
-		window:show()
-		window:raise()
-		window:focus()
+		show("bestiary") -- We init on bestiary
 	end
+end
+
+function show(type)
+	type = type or "bestiary"
+
+	if currentType ~= type then
+		toggleWindow(type)
+	end
+
+	if not window:isVisible() then
+		window:show()
+	end
+
+	window:raise()
+	window:focus()
 end
 
 function toggleTracker()

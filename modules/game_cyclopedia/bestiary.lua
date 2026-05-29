@@ -49,6 +49,8 @@ local currentBestiaryRows = {}
 local currentBestiaryEntries = {}
 local bestiaryTrackerRefreshEvent = nil
 local bestiaryMonsterRefreshEvent = nil
+local syncingTrackKillsCheckbox = false
+local selectedBestiaryCharmSlot = 1
 local scheduleBestiaryMonsterRefresh
 local stopBestiaryMonsterRefresh
 local bestiaryCategoryImages = {
@@ -123,6 +125,20 @@ local function isBestiaryView()
 	return modules.game_cyclopedia and modules.game_cyclopedia.getCurrentType and modules.game_cyclopedia.getCurrentType() == "bestiary"
 end
 
+local function setTrackKillsCheckedFromServer(checked)
+	if not bestiaryMonster or not bestiaryMonster.trackKills then
+		return
+	end
+
+	if bestiaryMonster.trackKills:isChecked() == checked then
+		return
+	end
+
+	syncingTrackKillsCheckbox = true
+	bestiaryMonster.trackKills:setChecked(checked)
+	syncingTrackKillsCheckbox = false
+end
+
 function readCyclopediaCreatureOutfit(msg)
 	local name = msg:getString()
 	return {
@@ -190,6 +206,219 @@ local function applyBestiaryCategoryRow(row, entry)
 		row.creatureProgress:setText("?")
 		bestContainer.creature.onClick = nil
 	end
+end
+
+local function openBestiaryMonsterFromTracker(raceId)
+	if not raceId or raceId <= 0 then
+		return false
+	end
+
+	if modules.game_cyclopedia and modules.game_cyclopedia.show then
+		modules.game_cyclopedia.show("bestiary")
+	end
+
+	requestBestiaryMonsterData(raceId)
+	return true
+end
+
+local function bindBestiaryTrackerEntryClick(widget, raceId)
+	if not widget then
+		return
+	end
+
+	widget.onMouseRelease = function(self, mousePos, mouseButton)
+		if mouseButton ~= MouseLeftButton then
+			return false
+		end
+
+		return openBestiaryMonsterFromTracker(raceId)
+	end
+end
+
+local function refreshBestiaryCharmDataSoon()
+	if requestBestiaryCharmRefresh then
+		requestBestiaryCharmRefresh()
+	end
+
+	local refreshCurrentMonster = function()
+		if selectedBestiaryRaceId > 0 and isBestiaryView() and bestiaryMonster and bestiaryMonster:isVisible() then
+			requestBestiaryMonsterData(selectedBestiaryRaceId)
+		end
+	end
+
+	scheduleEvent(refreshCurrentMonster, 250)
+	scheduleEvent(refreshCurrentMonster, 800)
+end
+
+local function confirmBestiaryCharmAction(message, callback)
+	local confirmWindow
+	local yesCallback = function()
+		confirmWindow:ok()
+		callback()
+	end
+	local noCallback = function()
+		confirmWindow:cancel()
+	end
+
+	confirmWindow = displayGeneralBox(tr('Cyclopedia'), message, {
+		{text = tr('Yes'), callback = yesCallback},
+		{text = tr('No'), callback = noCallback}
+	}, yesCallback, noCallback)
+end
+
+local function clearBestiaryCharmSlot(slot)
+	if not slot then
+		return
+	end
+
+	slot.charm = nil
+	slot:setOpacity(0.5)
+	slot:setTooltip("")
+	slot.onMouseRelease = nil
+	slot:setBorderColor('#161616')
+	slot:setBorderWidth(1)
+	if slot.charmRune then
+		slot.charmRune:hide()
+	end
+end
+
+local function updateBestiaryCharmSlotSelection()
+	if not bestiaryMonster then
+		return
+	end
+
+	local slots = {bestiaryMonster.charmSlot1, bestiaryMonster.charmSlot2}
+	for index, slot in ipairs(slots) do
+		if slot then
+			if index == selectedBestiaryCharmSlot then
+				slot:setBorderColor('white')
+				slot:setBorderWidth(2)
+			else
+				slot:setBorderColor('#161616')
+				slot:setBorderWidth(1)
+			end
+		end
+	end
+end
+
+local function bindEmptyBestiaryCharmSlot(slot, index)
+	if not slot or slot.charm then
+		return
+	end
+
+	slot.onMouseRelease = function(self, mousePos, mouseButton)
+		if mouseButton ~= MouseLeftButton then
+			return false
+		end
+
+		selectedBestiaryCharmSlot = index
+		updateBestiaryCharmSlotSelection()
+		return true
+	end
+end
+
+local function setBestiaryCharmSlot(slot, charm)
+	if not slot then
+		return
+	end
+	if not charm then
+		clearBestiaryCharmSlot(slot)
+		return
+	end
+
+	slot.charm = charm
+	slot:setOpacity(1)
+	slot:setTooltip(charm.name)
+	slot:setBorderColor('#161616')
+	slot:setBorderWidth(1)
+	if slot.charmRune then
+		slot.charmRune:setImageSource('/images/game/charms/' .. charm.id)
+		slot.charmRune:show()
+	end
+
+	slot.onMouseRelease = function(self, mousePos, mouseButton)
+		if mouseButton ~= MouseLeftButton or not self.charm or selectedBestiaryRaceId <= 0 then
+			return false
+		end
+
+		selectedBestiaryCharmSlot = self == bestiaryMonster.charmSlot2 and 2 or 1
+		updateBestiaryCharmSlotSelection()
+		local raceId = selectedBestiaryRaceId
+		local charmId = self.charm.id
+		local message = tr('Do you want to remove the Charm %s from this creature? This will cost you %s gold pieces.', self.charm.name, self.charm.removeRuneCost or 0)
+		confirmBestiaryCharmAction(message, function()
+			if sendBestiaryCharmRemove then
+				sendBestiaryCharmRemove(charmId, raceId)
+				refreshBestiaryCharmDataSoon()
+			end
+		end)
+		return true
+	end
+end
+
+function updateBestiaryCharmSlots()
+	if not isBestiaryView() or not bestiaryMonster then
+		return
+	end
+
+	local assignedCharms = {}
+	if getBestiaryAssignedCharms and selectedBestiaryRaceId > 0 then
+		assignedCharms = getBestiaryAssignedCharms(selectedBestiaryRaceId)
+	end
+
+	setBestiaryCharmSlot(bestiaryMonster.charmSlot1, assignedCharms[1])
+	setBestiaryCharmSlot(bestiaryMonster.charmSlot2, assignedCharms[2])
+	if selectedBestiaryCharmSlot > 2 or (selectedBestiaryCharmSlot == 2 and not bestiaryMonster.charmSlot2) then
+		selectedBestiaryCharmSlot = 1
+	end
+	updateBestiaryCharmSlotSelection()
+	bindEmptyBestiaryCharmSlot(bestiaryMonster.charmSlot1, 1)
+	bindEmptyBestiaryCharmSlot(bestiaryMonster.charmSlot2, 2)
+
+	local assignButton = bestiaryMonster.assignCharmButton
+	if not assignButton then
+		return
+	end
+
+	local assignableCharms = getBestiaryAssignableCharms and getBestiaryAssignableCharms() or {}
+	if #assignedCharms >= 2 or #assignableCharms == 0 then
+		assignButton:disable()
+		assignButton:setOpacity(0.5)
+	else
+		assignButton:enable()
+		assignButton:setOpacity(1)
+	end
+end
+
+local function showBestiaryAssignCharmMenu(mousePos)
+	if selectedBestiaryRaceId <= 0 or not getBestiaryAssignableCharms then
+		return
+	end
+
+	local assignableCharms = getBestiaryAssignableCharms()
+	if #assignableCharms == 0 then
+		displayInfoBox(tr('Cyclopedia'), tr('There are no available charms to assign.'))
+		return
+	end
+
+	local menu = g_ui.createWidget('PopupMenu')
+	menu:setGameMenu(true)
+	for _, charm in ipairs(assignableCharms) do
+		menu:addOption(charm.name, function()
+			local raceId = selectedBestiaryRaceId
+			local message = tr('Do you want to use the Charm %s for this creature?', charm.name)
+			confirmBestiaryCharmAction(message, function()
+				if sendBestiaryCharmAssign then
+					sendBestiaryCharmAssign(charm.id, raceId)
+					refreshBestiaryCharmDataSoon()
+				end
+			end)
+		end)
+	end
+	if not mousePos and bestiaryMonster and bestiaryMonster.assignCharmButton then
+		mousePos = bestiaryMonster.assignCharmButton:getPosition()
+	end
+	menu:display(mousePos)
 end
 
 local function applyBestiaryProgressUpdate(entry)
@@ -438,9 +667,8 @@ function registerBestiaryProtocol()
 		local raceOutfit = readCyclopediaCreatureOutfit(msg)
 		protoData[raceId] = raceOutfit
 		selectedBestiaryRaceId = raceId
-		if bestiaryMonster.trackKills then
-			bestiaryMonster.trackKills:setChecked(trackedCreatures[raceId] == true, true)
-		end
+		setTrackKillsCheckedFromServer(trackedCreatures[raceId] == true)
+		updateBestiaryCharmSlots()
 		bestiaryMonster:setText(firstToUpper(raceOutfit and raceOutfit.name or "unknown"))
 		if raceOutfit then
 			bestiaryMonster.bestiaryCreature:setOutfit(raceOutfit)
@@ -539,16 +767,27 @@ function registerBestiaryProtocol()
 				if difficultyList[i] then
 					slot:enable()
 					if (currentLevel > 1) then
+						if slot.image then
+							slot.image:setImageSource("/images/ui/34-button")
+							slot.image:setImageClip("0 34 34 34")
+						end
 						slot.item:setItemId(difficultyList[i].itemId)
 						slot.item:setTooltip(firstToUpper(difficultyList[i].name))
 						slot.countLabel:setText(difficultyList[i].countMax > 1 and "1+" or "1")
 						slot.countLabel:show()
 					else
+						if slot.image then
+							slot.image:setImageSource("/images/ui/unkown-button")
+							slot.image:setImageClip("0 0 34 34")
+						end
 						slot.item:setItemId(0)
 						slot.countLabel:hide()
-						slot:setImageSource("/images/game/bestiary/undiscoveredSlot")
 					end
 				else
+					if slot.image then
+						slot.image:setImageSource("/images/ui/34-button")
+						slot.image:setImageClip("0 0 34 34")
+					end
 					slot.item:setItemId(0)
 					slot.countLabel:hide()
 					slot:disable()
@@ -712,15 +951,28 @@ function getItemTier(chance)
 	end
 return tier
 end
+local function formatNumber(value)
+	local number = math.floor(tonumber(value) or 0)
+	local sign = number < 0 and '-' or ''
+	local text = tostring(math.abs(number))
+	local left, middle, right = text:match('^([^%d]*%d)(%d*)(.-)$')
+
+	if not left then
+		return tostring(number)
+	end
+
+	return sign .. left .. middle:reverse():gsub('(%d%d%d)', '%1,'):reverse() .. right
+end
+
 function BestiaryChangeAmount(amount,secondAmount)
 if not isBestiaryView() then
 return
 end
 if charmAmountBestiary then
-charmAmountBestiary:setText(amount)
+charmAmountBestiary:setText(formatNumber(amount))
 end
 if goldAmountBestiary then
-goldAmountBestiary:setText(secondAmount)
+goldAmountBestiary:setText(formatNumber(secondAmount))
 end
 end
 
@@ -785,6 +1037,12 @@ local function redrawBestiaryTracker()
 		if not row then
 			return
 		end
+		row.raceId = entry.raceId
+		bindBestiaryTrackerEntryClick(row, entry.raceId)
+		bindBestiaryTrackerEntryClick(row.creature, entry.raceId)
+		bindBestiaryTrackerEntryClick(row.creatureName, entry.raceId)
+		bindBestiaryTrackerEntryClick(row.progressBg, entry.raceId)
+		bindBestiaryTrackerEntryClick(row.progressBar, entry.raceId)
 
 		if entry.outfit then
 			row.creature:setOutfit(entry.outfit)
@@ -1049,9 +1307,7 @@ function updateBestiaryTracker(msg)
 	end
 
 	if bestiaryMonster and bestiaryMonster:isVisible() and selectedBestiaryRaceId > 0 then
-		if bestiaryMonster.trackKills then
-			bestiaryMonster.trackKills:setChecked(trackedCreatures[selectedBestiaryRaceId] == true, true)
-		end
+		setTrackKillsCheckedFromServer(trackedCreatures[selectedBestiaryRaceId] == true)
 	end
 end
 
@@ -1083,6 +1339,9 @@ function initBestiary(contentContainer)
 		bestiaryMonster.locationField = bestiaryMonster:recursiveGetChildById('locationField')
 		bestiaryMonster.locationTextfield = bestiaryMonster:recursiveGetChildById('locationTextfield')
 		bestiaryMonster.trackKills = bestiaryMonster:recursiveGetChildById('trackKills')
+		bestiaryMonster.charmSlot1 = bestiaryMonster:recursiveGetChildById('charmSlot1')
+		bestiaryMonster.charmSlot2 = bestiaryMonster:recursiveGetChildById('charmSlot2')
+		bestiaryMonster.assignCharmButton = bestiaryMonster:recursiveGetChildById('assignCharmButton')
 
 	if backCategoryButton then
 		backCategoryButton.onClick = function()
@@ -1132,8 +1391,22 @@ function initBestiary(contentContainer)
 		end
 	end
 
+	if bestiaryMonster.assignCharmButton then
+		bestiaryMonster.assignCharmButton.onClick = function(widget, mousePos)
+			updateBestiaryCharmSlotSelection()
+			showBestiaryAssignCharmMenu(mousePos)
+		end
+	end
+
 	if bestiaryMonster.trackKills then
 		bestiaryMonster.trackKills.onCheckChange = function(widget, checked)
+			if syncingTrackKillsCheckbox then
+				return
+			end
+			if not selectedBestiaryRaceId or selectedBestiaryRaceId <= 0 then
+				return
+			end
+			trackedCreatures[selectedBestiaryRaceId] = checked or nil
 			requestBestiaryTrackerToggle(selectedBestiaryRaceId)
 		end
 	end
