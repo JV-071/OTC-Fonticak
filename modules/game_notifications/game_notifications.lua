@@ -127,7 +127,11 @@ function notificationsController:onGameStart()
         end
         playerBaseMagicLevel = player:getBaseMagicLevel()
         for id, protoId in pairs(otcToProtoSkill) do
-            playerSkills[protoId] = player:getSkillBaseLevel(id)
+            playerSkills[protoId] = {
+                baseLevel = player:getSkillBaseLevel(id),
+                effectiveLevel = player:getSkillLevel(id),
+                percent = player:getSkillLevelPercent(id)
+            }
         end
     end
 
@@ -168,20 +172,55 @@ function notificationsController:onGameStart()
             end
             playerBaseMagicLevel = baseMagicLevel
         end,
+        onSkillChange = function(player, id, level, percent)
+            local protoId = otcToProtoSkill[id]
+            if not protoId then return end
+
+            local skillState = playerSkills[protoId] or {}
+            skillState.previousPercent = skillState.percent
+            skillState.effectiveLevel = level
+            skillState.percent = percent
+            skillState.baseLevel = skillState.baseLevel or player:getSkillBaseLevel(id)
+            playerSkills[protoId] = skillState
+        end,
         onBaseSkillChange = function(player, id, baseLevel, oldBaseLevel)
             local protoId = otcToProtoSkill[id]
             if not protoId then return end
-            oldBaseLevel = playerSkills[protoId] or oldBaseLevel
+            local skillState = playerSkills[protoId] or {}
+            oldBaseLevel = skillState.baseLevel or oldBaseLevel
             if not oldBaseLevel or oldBaseLevel == 0 then
-                playerSkills[protoId] = baseLevel
+                skillState.baseLevel = baseLevel
+                skillState.effectiveLevel = skillState.effectiveLevel or player:getSkillLevel(id)
+                skillState.percent = skillState.percent or player:getSkillLevelPercent(id)
+                playerSkills[protoId] = skillState
                 return
             end
+
+            local oldPercent = skillState.previousPercent
+            local currentPercent = player:getSkillLevelPercent(id)
+            local accepted = baseLevel > oldBaseLevel and oldPercent ~= nil and currentPercent < oldPercent
+            g_logger.debug(string.format(
+                "notifications: skill base change skill=%s old=%s new=%s percent=%s oldPercent=%s accepted=%s",
+                tostring(protoId),
+                tostring(oldBaseLevel),
+                tostring(baseLevel),
+                tostring(currentPercent),
+                tostring(oldPercent),
+                tostring(accepted)
+            ))
+
             if baseLevel > oldBaseLevel then
-                for l = oldBaseLevel + 1, baseLevel do
-                    self:onClientEvent(5, protoId, l)
+                if accepted then
+                    for l = oldBaseLevel + 1, baseLevel do
+                        self:onClientEvent(5, protoId, l)
+                    end
                 end
             end
-            playerSkills[protoId] = baseLevel
+            skillState.baseLevel = baseLevel
+            skillState.effectiveLevel = player:getSkillLevel(id)
+            skillState.percent = currentPercent
+            skillState.previousPercent = nil
+            playerSkills[protoId] = skillState
         end
     })
 
