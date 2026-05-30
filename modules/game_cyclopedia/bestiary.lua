@@ -921,6 +921,10 @@ function registerBestiaryProtocol()
 		local charmAmount = msg:getU32()
 		local goldAmount = msg:getU32()
 
+		if modules.game_notifications and modules.game_notifications.showBestiaryProgress then
+			modules.game_notifications.showBestiaryProgress(raceId, progress)
+		end
+
 		applyBestiaryProgressUpdate({
 			raceId = raceId,
 			progress = progress,

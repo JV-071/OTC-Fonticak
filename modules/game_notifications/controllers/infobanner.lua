@@ -203,9 +203,85 @@ notificationsController.event = nil
 notificationsController.state = "idle"
 notificationsController.queue = {}
 notificationsController.widgets = {}
--- Track recently received skill events to avoid enqueuing duplicates
-notificationsController.lastReceivedSkills = {}
-notificationsController.lastShownSkills = {}
+notificationsController.recentAdvanceEvents = {}
+notificationsController.activeAdvanceKey = nil
+notificationsController.recentClientEvents = {}
+
+local function getAdvanceKey(eventCat, ...)
+    local args = {...}
+    if eventCat == eventCategory.CLIENT_EVENT_TYPE_LEVEL then
+        return string.format("level:%s", tostring(args[1]))
+    elseif eventCat == eventCategory.CLIENT_EVENT_TYPE_SKILL then
+        return string.format("skill:%s:%s", tostring(args[1]), tostring(args[2]))
+    end
+    return nil
+end
+
+local function refreshAdvanceText(item)
+    if not item or not item.extraData then
+        return
+    end
+
+    local extraData = item.extraData
+    if extraData.advanceType == "level" then
+        local popupTemplate = infoPopUp[eventCategory.CLIENT_EVENT_TYPE_LEVEL][1]
+        item.title = popupTemplate.title:format(extraData.level)
+        item.desc = popupTemplate.description
+        item.img = popupTemplate.img
+    elseif extraData.advanceType == "skill" then
+        local popupTemplate = infoPopUp[eventCategory.CLIENT_EVENT_TYPE_SKILL][1]
+        local data = skillNames[extraData.skillId] or {
+            name = "Skill",
+            icon = "fist"
+        }
+        item.title = popupTemplate.title:format(data.name)
+        item.desc = popupTemplate.description:format(extraData.level)
+        item.img = popupTemplate.img:format(data.icon)
+    end
+end
+
+local function shouldSkipRecentClientEvent(key)
+    if not key then
+        return false
+    end
+
+    notificationsController.recentClientEvents = notificationsController.recentClientEvents or {}
+    if notificationsController.recentClientEvents[key] then
+        return true
+    end
+
+    notificationsController.recentClientEvents[key] = true
+    scheduleEvent(function()
+        if notificationsController and notificationsController.recentClientEvents then
+            notificationsController.recentClientEvents[key] = nil
+        end
+    end, 3000)
+    return false
+end
+
+function showOutOfSoulPointsBanner()
+    if shouldSkipRecentClientEvent("simple:out-of-soul") then
+        return
+    end
+    notificationsController:onClientEvent(eventCategory.CLIENT_EVENT_TYPE_SIMPLE, eventType.CLIENT_EVENT_OUTOFSOULPOINTS)
+end
+
+function showAchievementBanner(name)
+    name = name or "an achievement"
+    if shouldSkipRecentClientEvent("achievement:" .. name) then
+        return
+    end
+    notificationsController:onClientEvent(eventCategory.CLIENT_EVENT_TYPE_ACHIEVEMENT, name)
+end
+
+function showBestiaryBanner(raceId, progressText)
+    progressText = progressText or "Bestiary progress"
+    local key = string.format("bestiary:%s:%s", tostring(raceId or 0), tostring(progressText))
+    if shouldSkipRecentClientEvent(key) then
+        return
+    end
+    notificationsController:onClientEvent(eventCategory.CLIENT_EVENT_TYPE_BESTIARY, raceId or 0, progressText)
+end
 
 function notificationsController:onClientEvent(eventCat, ...)
     if not modules.client_options.getOption("showInfoBanner") then
@@ -213,27 +289,20 @@ function notificationsController:onClientEvent(eventCat, ...)
         return
     end
     local args = {...}
-    -- Prevent duplicate skill notifications when identical events arrive
+    -- Prevent duplicate advance notifications when identical events arrive
     -- in quick succession (e.g., both LocalPlayer and g_game emitting the same).
-    if eventCat == eventCategory.CLIENT_EVENT_TYPE_SKILL then
-        local skillId = args[1]
-        local level = args[2]
-        notificationsController.lastReceivedSkills = notificationsController.lastReceivedSkills or {}
-        -- If we already received the same skill/level recently, skip it.
-        if notificationsController.lastReceivedSkills[skillId] == level then
+    local advanceKey = getAdvanceKey(eventCat, ...)
+    if advanceKey then
+        notificationsController.recentAdvanceEvents = notificationsController.recentAdvanceEvents or {}
+        if notificationsController.recentAdvanceEvents[advanceKey] then
             return
         end
-        -- Record it and schedule a cleanup so we can receive new levels later.
-        notificationsController.lastReceivedSkills[skillId] = level
+        notificationsController.recentAdvanceEvents[advanceKey] = true
         scheduleEvent(function()
-            if notificationsController and notificationsController.lastReceivedSkills then
-                notificationsController.lastReceivedSkills[skillId] = nil
+            if notificationsController and notificationsController.recentAdvanceEvents then
+                notificationsController.recentAdvanceEvents[advanceKey] = nil
             end
         end, 3000)
-        -- Also ignore if we've already shown this exact level previously.
-        if notificationsController.lastShownSkills and notificationsController.lastShownSkills[skillId] == level then
-            return
-        end
     end
     local popupTemplate = nil
     if eventCat == eventCategory.CLIENT_EVENT_TYPE_SIMPLE then
@@ -273,21 +342,23 @@ function notificationsController:onClientEvent(eventCat, ...)
 
     elseif eventCat == eventCategory.CLIENT_EVENT_TYPE_LEVEL then
         local level = args[1]
-        title = type(title) == 'string' and title:format(level) or title
+        extraData.level = level
+        extraData.advanceType = "level"
+        extraData.advanceKey = advanceKey
+        title = nil
+        description = nil
+        img = nil
 
     elseif eventCat == eventCategory.CLIENT_EVENT_TYPE_SKILL then
         local skillId = args[1]
         local level = args[2]
-        local data = skillNames[skillId] or {
-            name = "Skill",
-            icon = "fist"
-        }
-        title = type(title) == 'string' and title:format(data.name) or title
-        description = type(description) == 'string' and description:format(level) or description
-        img = type(img) == 'string' and img:format(data.icon) or img
-        -- expose skill id/level to the show() call for dedupe logic
         extraData.skillId = skillId
         extraData.level = level
+        extraData.advanceType = "skill"
+        extraData.advanceKey = advanceKey
+        title = nil
+        description = nil
+        img = nil
 
     elseif eventCat == eventCategory.CLIENT_EVENT_TYPE_COSMETIC then
         local lookType = args[1]
@@ -377,41 +448,41 @@ function notificationsController:cancelEvent()
     end
 end
 
+function notificationsController:reloadBannerHtml()
+    if self.ui then
+        self:unloadHtml()
+        self.widgets = {}
+    end
+    self:ensure()
+end
+
 function notificationsController:show(title, desc, img, holdMs, extraData)
     self:ensure()
     -- Adding to queue -> title
 
-    -- If this is a skill event, collapse existing queued entries for the
-    -- same skill so we keep only the highest level. This prevents the
-    -- banner from showing stale intermediate levels as the final one.
     local item = {
-        title = title,
-        desc = desc,
-        img = img,
         holdMs = holdMs or DEFAULT_HOLD_MS,
         extraData = extraData or {}
     }
 
-    if item.extraData and item.extraData.skillId and item.extraData.level then
-        local skillId = item.extraData.skillId
-        local newLevel = item.extraData.level
-        local i = 1
-        while i <= #self.queue do
+    local advanceKey = item.extraData and item.extraData.advanceKey
+    if not advanceKey then
+        item.title = title
+        item.desc = desc
+        item.img = img
+    end
+
+    if advanceKey then
+        if self.activeAdvanceKey == advanceKey then
+            return
+        end
+        for i = 1, #self.queue do
             local q = self.queue[i]
-            if q and q.extraData and q.extraData.skillId == skillId then
-                local qLevel = q.extraData.level or 0
-                if qLevel >= newLevel then
-                    -- There's already a queued equal-or-higher level; skip adding
-                    -- Skipping enqueue: existing queued level >= new level
-                    return
-                else
-                    -- Remove the older queued lower level and continue
-                    table.remove(self.queue, i)
-                end
-            else
-                i = i + 1
+            if q and q.extraData and q.extraData.advanceKey == advanceKey then
+                return
             end
         end
+        g_logger.debug(string.format("notifications: enqueue %s", advanceKey))
     end
 
     table.insert(self.queue, item)
@@ -462,6 +533,13 @@ function notificationsController:resetBanner()
         self.widgets.append:destroyChildren()
     end
 
+    if self.widgets.title then
+        self.widgets.title:setText("")
+    end
+    if self.widgets.desc then
+        self.widgets.desc:setText("")
+    end
+
     local anim = self.widgets.anim
     anim:show()
     anim:setMarginLeft(0)
@@ -473,47 +551,41 @@ function notificationsController:processNext()
     if #self.queue == 0 then
         -- Queue empty. Unloading UI.
         self.state = "idle"
+        self.activeAdvanceKey = nil
         if self.ui then
             self:unloadHtml()
             self.widgets = {}
         end
         return
     end
-    self:updateBannerPosition()
-    -- Pop next non-duplicate item from the queue. If the next queued skill
-    -- event was already shown, skip it and continue to the next.
-    local data = nil
-    while #self.queue > 0 do
-        data = table.remove(self.queue, 1)
-        if data and data.extraData and data.extraData.skillId and data.extraData.level and
-           notificationsController.lastShownSkills and
-           notificationsController.lastShownSkills[data.extraData.skillId] == data.extraData.level then
-            -- Skipping queued already shown skill
-            data = nil
-        else
-            break
-        end
-    end
+    local data = table.remove(self.queue, 1)
     if not data then
-        -- nothing to process after skipping duplicates
-        if #self.queue == 0 then
-            -- Queue empty after skipping duplicates. Unloading UI.
-            self.state = "idle"
-            if self.ui then
-                self:unloadHtml()
-                self.widgets = {}
-            end
-            return
+        self.state = "idle"
+        self.activeAdvanceKey = nil
+        if self.ui then
+            self:unloadHtml()
+            self.widgets = {}
         end
+        return
     end
+    self:reloadBannerHtml()
+    self:updateBannerPosition()
     if not self.ui or self.ui:isDestroyed() then
         self.state = "idle"
+        self.activeAdvanceKey = nil
         return
+    end
+    self.activeAdvanceKey = data.extraData and data.extraData.advanceKey or nil
+    refreshAdvanceText(data)
+    if self.activeAdvanceKey then
+        g_logger.debug(string.format("notifications: show %s", self.activeAdvanceKey))
     end
     self:resetBanner()
     if data.img then
         self.widgets.icon:setImageSource(data.img)
     end
+    self.widgets.title:setText("")
+    self.widgets.desc:setText("")
     self.widgets.title:setText(data.title or "")
     self.widgets.desc:setText(data.desc or "")
 
@@ -561,13 +633,6 @@ function notificationsController:processNext()
                 })
             end
         end
-    end
-
-    -- Mark the skill/level as shown now that we're about to open its banner.
-    if data.extraData and data.extraData.skillId and data.extraData.level then
-        notificationsController.lastShownSkills = notificationsController.lastShownSkills or {}
-        notificationsController.lastShownSkills[data.extraData.skillId] = data.extraData.level
-        -- Marked shown skill
     end
 
     self.state = "opening"
@@ -706,6 +771,7 @@ function notificationsController:exit()
     self.ui:hide()
     self.ui:setOpacity(1)
     self.state = "idle"
+    self.activeAdvanceKey = nil
     self:processNext()
 end
 
@@ -717,5 +783,6 @@ function notificationsController:hideImmediate()
     end
     self.queue = {}
     self.state = "idle"
+    self.activeAdvanceKey = nil
     -- Reset Immediate and Unloaded.
 end
