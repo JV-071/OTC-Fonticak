@@ -1043,7 +1043,12 @@ function onContainerOpen(container, previousContainer)
         containerWindow:setText(name)
     end
 
-    containerItemWidget:setItem(container:getContainerItem())
+    local containerItem = container:getContainerItem()
+    if containerItem then
+        containerItemWidget:setItemId(containerItem:getId())
+    else
+        containerItemWidget:setItem(nil)
+    end
     containerItemWidget:setPhantom(true)
 
     containerPanel:destroyChildren()

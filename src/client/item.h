@@ -93,6 +93,7 @@ public:
     int getCountOrSubType() { return m_countOrSubType; }
     int getSubType();
     int getCount() { return isStackable() ? m_countOrSubType : 1; }
+    bool isQuiver();
     std::string getTooltip() { return m_tooltip; }
     uint32_t getDurationTime() { return m_durationTime; }
     uint32_t getCharges() { return m_charges; }
