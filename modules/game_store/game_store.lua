@@ -169,8 +169,6 @@ function create()
   gameStoreWindow = g_ui.displayUI("game_store")
   gameStoreWindow:hide()
 
-
-
   createTransferWindow()
   requestCatalog()
 end
@@ -204,6 +202,19 @@ function destroy()
   selected = nil
   selectedOffer = nil
   pendingBuyOffer = nil
+end
+
+local function ensureStoreWindow()
+  if gameStoreWindow then
+    return true
+  end
+
+  if not g_game.isOnline() then
+    return false
+  end
+
+  create()
+  return gameStoreWindow ~= nil
 end
 
 function requestCatalog()
@@ -403,7 +414,7 @@ end
 
 function show()
   hideTransferWindow()
-  if not gameStoreWindow then
+  if not ensureStoreWindow() then
     return
   end
 
@@ -422,7 +433,7 @@ function hide()
 end
 
 function toggle()
-  if not gameStoreWindow then
+  if not ensureStoreWindow() then
     return
   end
 
