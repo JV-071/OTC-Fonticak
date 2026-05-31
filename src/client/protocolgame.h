@@ -391,6 +391,7 @@ private:
     void parseWeaponProficiencyCatalog(const InputMessagePtr& msg);
     void parseWeaponProficiencyExperience(const InputMessagePtr& msg);
     void parseWeaponProficiencyInfo(const InputMessagePtr& msg);
+    void parseWeaponProficiencyInfoBatch(const InputMessagePtr& msg);
 
     void parseHighscores(const InputMessagePtr& msg);
     void parseAttachedEffect(const InputMessagePtr& msg);

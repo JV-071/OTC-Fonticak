@@ -83,6 +83,7 @@ namespace Proto
         GameServerFloorDescription = 75,
         GameServerItemsPriceList = 83,
         GameServerWeaponProficiencyCatalog = 90,
+        GameServerWeaponProficiencyInfoBatch = 91,
 
         // original tibia ONLY
         GameServerWeaponProficiencyExperience = 92,
