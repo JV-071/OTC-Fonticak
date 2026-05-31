@@ -101,6 +101,11 @@ local function getLeftSlotItem()
     return player and player:getInventoryItem(InventorySlotLeft) or nil
 end
 
+local function hasWeaponProficiencyProtocol()
+    return type(g_game.sendWeaponProficiencyAction) == 'function' and
+               type(g_game.sendWeaponProficiencyApply) == 'function'
+end
+
 local function getPlayerWheelVocation()
     local player = g_game.getLocalPlayer()
     if not player then
@@ -294,30 +299,31 @@ function scheduleAutoSelect(delay)
 end
 
 function onGameStart()
-    if not g_game.getFeature(GameProficiency) then
+    if not hasWeaponProficiencyProtocol() then
         scheduleEvent(function()
             g_modules.getModule("game_proficiency"):unload()
         end, 100)
-    else
-        WeaponProficiency.allProficiencyRequested = false
-        WeaponProficiency.saveWeaponMissing = false
-        WeaponProficiency.firstItemRequested = nil
-        WeaponProficiency.cacheList = {}
-        WeaponProficiency.currentEquippedExp = 0
-        WeaponProficiency.currentEquippedMaxExp = 0
-
-        -- Client version can change after module init; reload before rebuilding the item cache.
-        ProficiencyData:loadProficiencyJson(true)
-
-        -- Recreate item cache on each login (may have been cleared by reset())
-        WeaponProficiency:createItemCache()
-
-        WeaponProficiency.button = createProficiencyButton()
-        setProficiencyButtonState(false)
-
-        -- Initialize topbar proficiency widget
-        initTopBarProficiency()
+        return
     end
+
+    WeaponProficiency.allProficiencyRequested = false
+    WeaponProficiency.saveWeaponMissing = false
+    WeaponProficiency.firstItemRequested = nil
+    WeaponProficiency.cacheList = {}
+    WeaponProficiency.currentEquippedExp = 0
+    WeaponProficiency.currentEquippedMaxExp = 0
+
+    -- Client version can change after module init; reload before rebuilding the item cache.
+    ProficiencyData:loadProficiencyJson(true)
+
+    -- Recreate item cache on each login (may have been cleared by reset())
+    WeaponProficiency:createItemCache()
+
+    WeaponProficiency.button = createProficiencyButton()
+    setProficiencyButtonState(false)
+
+    -- Initialize topbar proficiency widget
+    initTopBarProficiency()
 end
 
 -- Initialize the proficiency widget in the top stats bar

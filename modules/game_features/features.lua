@@ -294,8 +294,5 @@ controller:registerEvents(g_game, {
             g_game.enableFeature(GameVocationMonk)
         end
 
-        if version >= 860 then
-            g_game.enableFeature(GameProficiency)
-        end
     end
 })
