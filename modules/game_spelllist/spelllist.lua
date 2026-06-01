@@ -344,15 +344,15 @@ function selectDefaultVocation()
     end
     local vocation = player:getVocation()
     local widget = vocationBoxAny
-    if vocation == VocationsClient.Knight or vocation == VocationsClient.EliteKnight then
+    if vocation == VocationsClient.Knight or vocation == VocationsClient.EliteKnight or vocation == VocationsServer.Knight or vocation == VocationsServer.EliteKnight then
         widget = vocationBoxKnight
-    elseif vocation == VocationsClient.Paladin or vocation == VocationsClient.RoyalPaladin then
+    elseif vocation == VocationsClient.Paladin or vocation == VocationsClient.RoyalPaladin or vocation == VocationsServer.Paladin or vocation == VocationsServer.RoyalPaladin then
         widget = vocationBoxPaladin
-    elseif vocation == VocationsClient.Sorcerer or vocation == VocationsClient.MasterSorcerer then
+    elseif vocation == VocationsClient.Sorcerer or vocation == VocationsClient.MasterSorcerer or vocation == VocationsServer.Sorcerer or vocation == VocationsServer.MasterSorcerer then
         widget= vocationBoxSorcerer
-    elseif vocation == VocationsClient.Druid or vocation == VocationsClient.ElderDruid then
+    elseif vocation == VocationsClient.Druid or vocation == VocationsClient.ElderDruid or vocation == VocationsServer.Druid or vocation == VocationsServer.ElderDruid then
         widget = vocationBoxDruid
-    elseif vocation == VocationsClient.Monk or vocation == VocationsClient.ExaltedMonk then
+    elseif vocation == VocationsClient.Monk or vocation == VocationsClient.ExaltedMonk or vocation == VocationsServer.Monk or vocation == VocationsServer.ExaltedMonk then
         widget = vocationBoxMonk
     end
     vocationRadioGroup:selectWidget(widget)
