@@ -633,10 +633,211 @@ function onHotkeyItems(itemList)
     end
 end
 
+local spellsByVocation = {
+    [1] = { -- Sorcerer
+        { level = 10, spell = "exana pox" },
+        { level = 12, spell = "exani hur" },
+        { level = 12, spell = "exori vis" },
+        { level = 13, spell = "exori tera" },
+        { level = 14, spell = "utevo gran lux" },
+        { level = 14, spell = "exevo pan" },
+        { level = 14, spell = "utamo vita" },
+        { level = 14, spell = "utani hur" },
+        { level = 14, spell = "exori flam" },
+        { level = 16, spell = "exori mort" },
+        { level = 18, spell = "exevo flam hur" },
+        { level = 20, spell = "utani gran hur" },
+        { level = 20, spell = "exura gran" },
+        { level = 23, spell = "exevo vis lux" },
+        { level = 26, spell = "utevo vis lux" },
+        { level = 30, spell = "exura vita" },
+        { level = 35, spell = "utana vid" },
+        { level = 38, spell = "exevo vis hur" },
+        { level = 50, spell = "utura" },
+        { level = 60, spell = "exevo gran mas flam" },
+    },
+    [2] = { -- Druid
+        { level = 10, spell = "exana pox" },
+        { level = 12, spell = "exani hur" },
+        { level = 12, spell = "exori vis" },
+        { level = 13, spell = "exori tera" },
+        { level = 14, spell = "utevo gran lux" },
+        { level = 14, spell = "exevo pan" },
+        { level = 14, spell = "utamo vita" },
+        { level = 14, spell = "utani hur" },
+        { level = 15, spell = "exori frigo" },
+        { level = 18, spell = "exevo frigo hur" },
+        { level = 18, spell = "exura sio" },
+        { level = 20, spell = "exura gran" },
+        { level = 22, spell = "exana vis" },
+        { level = 26, spell = "utevo vis lux" },
+        { level = 30, spell = "exura vita" },
+        { level = 35, spell = "utana vid" },
+        { level = 36, spell = "exura gran mas res" },
+        { level = 38, spell = "exevo tera hur" },
+        { level = 55, spell = "exevo gran mas tera" },
+        { level = 60, spell = "exevo gran mas frigo" },
+    },
+    [3] = { -- Paladin
+        { level = 10, spell = "exana pox" },
+        { level = 12, spell = "exani hur" },
+        { level = 13, spell = "utevo gran lux" },
+        { level = 13, spell = "exevo con" },
+        { level = 14, spell = "utani hur" },
+        { level = 16, spell = "exevo con pox" },
+        { level = 17, spell = "exevo con mort" },
+        { level = 20, spell = "exura gran" },
+        { level = 23, spell = "exori con" },
+        { level = 24, spell = "exevo con hur" },
+        { level = 25, spell = "exevo con flam" },
+        { level = 35, spell = "exura san" },
+        { level = 40, spell = "exori san" },
+        { level = 45, spell = "exeta con" },
+        { level = 50, spell = "exevo mas san" },
+        { level = 55, spell = "utamo tempo san" },
+        { level = 60, spell = "utito tempo san" },
+        { level = 60, spell = "exura gran san" },
+        { level = 150, spell = "exevo gran con grav" },
+    },
+    [4] = { -- Knight
+        { level = 10, spell = "exana pox" },
+        { level = 12, spell = "exani hur" },
+        { level = 14, spell = "utani hur" },
+        { level = 25, spell = "utani tempo hur" },
+        { level = 28, spell = "exori hur" },
+        { level = 33, spell = "exori mas" },
+        { level = 35, spell = "exori" },
+        { level = 45, spell = "exana kor" },
+        { level = 60, spell = "utito tempo" },
+        { level = 80, spell = "exura gran ico" },
+        { level = 90, spell = "exori gran" },
+    },
+}
+
+local function flySpellAnimation(spellName, targetButton, onFinish)
+    local root = modules.game_interface.getRootPanel()
+    if not root then
+        if onFinish then onFinish() end
+        return
+    end
+
+    local spellData = Spells.getSpellDataByParamWords(spellName:lower())
+    if not spellData then
+        if onFinish then onFinish() end
+        return
+    end
+
+    local spellId = spellData.clientId
+    if not spellId then
+        if onFinish then onFinish() end
+        return
+    end
+
+    local source = SpelllistSettings['Default'].iconFile
+    local clip = Spells.getImageClip(spellId, 'Default')
+
+    -- Create temporary flying widget on the root panel
+    local flyWidget = g_ui.createWidget('UIWidget', root)
+    flyWidget:setSize({width = 32, height = 32})
+    flyWidget:setImageSource(source)
+    flyWidget:setImageClip(clip)
+    flyWidget:setPhantom(true)
+    flyWidget:setOpacity(0.0)
+    local startX = root:getWidth() / 2 - 16
+    local startY = root:getHeight() * 0.75 - 16
+    flyWidget:setPosition({x = startX, y = startY})
+    local targetPos = targetButton:getPosition()
+    local targetX = targetPos.x + (targetButton:getWidth() - 32) / 2
+    local targetY = targetPos.y + (targetButton:getHeight() - 32) / 2
+
+    local duration = 650
+    local stepTime = 20
+    local steps = duration / stepTime
+    local currentStep = 0
+
+    local function animate()
+        if not flyWidget or flyWidget:isDestroyed() then
+            return
+        end
+
+        if currentStep >= steps then
+            flyWidget:destroy()
+            if onFinish then onFinish() end
+            return
+        end
+
+        currentStep = currentStep + 1
+        local t = currentStep / steps
+
+        local opacity = math.min(t / 0.3, 1.0)
+        flyWidget:setOpacity(opacity)
+
+        local arcHeight = -100
+        local arcY = 4 * arcHeight * t * (1 - t)
+
+        local currentX = startX + (targetX - startX) * t
+        local currentY = startY + (targetY - startY) * t + arcY
+
+        -- Scale effect (starts at 2.0x, shrinks down to 1.0x)
+        local scale = 2.0 - 1.0 * t
+        flyWidget:setSize({width = 32 * scale, height = 32 * scale})
+        flyWidget:setPosition({x = currentX, y = currentY})
+
+        scheduleEvent(animate, stepTime)
+    end
+
+    animate()
+end
+
+local function autoAssignSpell(spellName)
+    for barId = 1, 9 do
+        for buttonId = 1, 50 do
+            local mapping = ApiJson.getMapping(barId, buttonId)
+            if mapping and mapping["actionsetting"] and mapping["actionsetting"]["chatText"] == spellName then
+                return false
+            end
+        end
+    end
+
+    for barId = 1, 9 do
+        local actionbar = actionBars[barId]
+        if actionbar then
+            if actionbar:isVisible() then
+                for buttonId = 1, 50 do
+                    local mapping = ApiJson.getMapping(barId, buttonId)
+                    if not mapping or not mapping["actionsetting"] then
+                        ApiJson.createOrUpdateText(barId, buttonId, spellName, true)
+                        local button = actionbar.tabBar:getChildById(barId .. "." .. buttonId)
+                        if button then
+                            flySpellAnimation(spellName, button, function()
+                                updateButton(button)
+                                ApiJson.saveData()
+                            end)
+                        else
+                            ApiJson.saveData()
+                        end
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
 --- Handles level updates
 function onUpdateLevel(localPlayer, level, levelPercent, oldLevel, oldLevelPercent)
     if level ~= oldLevel then
         onUpdateActionBarStatus()
+        local vocationId = localPlayer:getVocation()
+        local vocationSpells = spellsByVocation[vocationId]
+        if vocationSpells then
+            for _, data in ipairs(vocationSpells) do
+                if level >= data.level and oldLevel < data.level then
+                    autoAssignSpell(data.spell)
+                end
+            end
+        end
     end
 end
 
