@@ -29,6 +29,11 @@ ConditionWidget < UIWidget
   $!first:
     margin-left: 2
 
+InventoryInfoPanel < UIWidget
+  image-source: /images/inventory/containerslot
+  image-border: 3
+  phantom: true
+
 PhantomMiniWindow
   id: maininventorypanel
   draggable: true
@@ -332,7 +337,7 @@ PhantomMiniWindow
       margin-top: 3
       &slotPosition: {x = 65535, y = 10, z = 0}
 
-    MainInventoryItem
+    InventoryInfoPanel
       id: soulPanel
       anchors.left: amulet.left
       anchors.right: amulet.right
@@ -358,7 +363,7 @@ PhantomMiniWindow
         anchors.bottom: parent.bottom
         color: #c0c0c0ff
 
-    MainInventoryItem
+    InventoryInfoPanel
       id: capacityPanel
       anchors.left: backpack.left
       anchors.right: backpack.right
@@ -404,7 +409,7 @@ PhantomMiniWindow
       $pressed !disabled:
         image-clip: 12 0 12 12
 
-    MainInventoryItem
+    InventoryInfoPanel
       id: soulAndCapacity
       anchors.left: changeSize.right
       anchors.top: changeSize.top

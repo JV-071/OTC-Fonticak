@@ -1032,30 +1032,48 @@ local function redrawBestiaryTracker()
 		return
 	end
 
-	contentsPanel:destroyChildren()
-
 	sortTrackerEntries()
 
-	for _, entry in ipairs(trackerEntries) do
-		local row = g_ui.createWidget('BestiaryTrackerEntry', contentsPanel)
-		if not row then
-			return
-		end
-		row.raceId = entry.raceId
-		bindBestiaryTrackerEntryClick(row, entry.raceId)
-		bindBestiaryTrackerEntryClick(row.creature, entry.raceId)
-		bindBestiaryTrackerEntryClick(row.creatureName, entry.raceId)
-		bindBestiaryTrackerEntryClick(row.progressBg, entry.raceId)
-		bindBestiaryTrackerEntryClick(row.progressBar, entry.raceId)
+	local children = contentsPanel:getChildren()
+	local childrenCount = #children
+	local entriesCount = #trackerEntries
 
-		if entry.outfit then
-			row.creature:setOutfit(entry.outfit)
-			row.creatureName:setText(firstToUpper(entry.outfit.name))
+	for i = 1, math.max(childrenCount, entriesCount) do
+		if i <= entriesCount then
+			local entry = trackerEntries[i]
+			local row = children[i]
+			if not row then
+				row = g_ui.createWidget('BestiaryTrackerEntry', contentsPanel)
+				row.raceId = entry.raceId
+				bindBestiaryTrackerEntryClick(row, entry.raceId)
+				bindBestiaryTrackerEntryClick(row.creature, entry.raceId)
+				bindBestiaryTrackerEntryClick(row.creatureName, entry.raceId)
+				bindBestiaryTrackerEntryClick(row.progressBg, entry.raceId)
+				bindBestiaryTrackerEntryClick(row.progressBar, entry.raceId)
+			elseif row.raceId ~= entry.raceId then
+				row.raceId = entry.raceId
+				bindBestiaryTrackerEntryClick(row, entry.raceId)
+				bindBestiaryTrackerEntryClick(row.creature, entry.raceId)
+				bindBestiaryTrackerEntryClick(row.creatureName, entry.raceId)
+				bindBestiaryTrackerEntryClick(row.progressBg, entry.raceId)
+				bindBestiaryTrackerEntryClick(row.progressBar, entry.raceId)
+			end
+
+			if entry.outfit then
+				row.creature:setOutfit(entry.outfit)
+				row.creatureName:setText(firstToUpper(entry.outfit.name))
+			else
+				row.creature:setOutfit(nil)
+				row.creatureName:setText("Unknown")
+			end
+			row.progressBar:setPercent(math.min(100, math.floor((entry.kills * 100) / math.max(entry.toKill, 1))))
+			row.progressBar:setText(entry.kills)
 		else
-			row.creatureName:setText("Unknown")
+			local row = children[i]
+			if row then
+				row:destroy()
+			end
 		end
-		row.progressBar:setPercent(math.min(100, math.floor((entry.kills * 100) / math.max(entry.toKill, 1))))
-		row.progressBar:setText(entry.kills)
 	end
 end
 
@@ -1549,4 +1567,25 @@ function emptyBestiaryCategories()
 		local child = bestiaryCSelecter:getLastChild()
 		bestiaryCSelecter:destroyChildren(child)
 	end
+end
+
+function terminateBestiary()
+	if bestiaryPanel then
+		bestiaryPanel:destroy()
+		bestiaryPanel = nil
+	end
+	if bestiaryTrackerWindow then
+		bestiaryTrackerWindow:destroy()
+		bestiaryTrackerWindow = nil
+	end
+	if bestiaryTrackerRefreshEvent then
+		removeEvent(bestiaryTrackerRefreshEvent)
+		bestiaryTrackerRefreshEvent = nil
+	end
+	if bestiaryMonsterRefreshEvent then
+		removeEvent(bestiaryMonsterRefreshEvent)
+		bestiaryMonsterRefreshEvent = nil
+	end
+	ProtocolGame.unregisterOpcode(CyclopediaOpcode.Send)
+	bestiaryProtocolRegistered = false
 end

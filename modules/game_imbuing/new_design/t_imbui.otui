@@ -15,6 +15,8 @@ ImbuingMainWindow < MainWindow
   padding-bottom: 4
 
 ImbuingGoldLabel < FlatPanel
+  image-source: /images/modern_ui/image1015925
+  image-border: 1
   size: 150 20
   padding: 5
   UIWidget
@@ -96,6 +98,7 @@ RequiredItem < UIWidget
     priceable: false
     phantom: true
     image-source: /images/ui/item
+    image-border: 10
     draggable: false
   FlatLabel
     id: count
@@ -104,7 +107,8 @@ RequiredItem < UIWidget
     anchors.left: prev.left
     anchors.right: prev.right
     anchors.top: prev.bottom
-    image-source: /images/ui/panel_flat
+    image-source: /images/modern_ui/image1015925
+    image-border: 1
     font: verdana-11px-rounded
     color: white
     text-offset: -2 1
@@ -206,7 +210,7 @@ SelectImbue < UIWidget
         virtual: true
         margin-top: 1
         margin-right: 22
-        phantom: true
+        phantom: false
         draggable: false
         UIWidget
           id: tier
@@ -376,12 +380,21 @@ SelectImbue < UIWidget
           margin-left: 6
       
       UIWidget
-        id: horizontalArrow
+        id: horizontalArrow1
         size: 14 25
         anchors.left: prev.right
         anchors.verticalCenter: requiredItems.verticalCenter
-        margin-left: 171
-        image-source: /images/ui/icon-arrow7x7-right
+        margin-left: 158
+        image-source: /game_forge/images/arrows/icon-arrow-rightlarge
+        phantom: false
+
+      UIWidget
+        id: horizontalArrow2
+        size: 14 25
+        anchors.left: prev.right
+        anchors.verticalCenter: prev.verticalCenter
+        margin-left: 12
+        image-source: /game_forge/images/arrows/icon-arrow-rightlarge
         phantom: false
 
       Label
@@ -410,7 +423,8 @@ SelectImbue < UIWidget
         anchors.left: prev.left
         anchors.right: prev.right
         anchors.top: prev.bottom
-        image-source: /images/ui/panel_flat
+        image-source: /images/modern_ui/image1015925
+        image-border: 1
         Label
           id: cost
           anchors.horizontalCenter: parent.horizontalCenter
@@ -497,7 +511,7 @@ ClearImbue < UIWidget
         anchors.right: prev.left
         priceable: false
         virtual: true
-        phantom: true
+        phantom: false
         draggable: false
         margin-top: 1
         margin-right: 22
@@ -645,7 +659,8 @@ ClearImbue < UIWidget
         anchors.left: prev.left
         anchors.right: prev.right
         anchors.top: prev.bottom
-        image-source: /images/ui/panel_flat
+        image-source: /images/modern_ui/image1015925
+        image-border: 1
         Label
           id: cost
           anchors.horizontalCenter: parent.horizontalCenter
@@ -699,7 +714,7 @@ ScrollImbue < UIWidget
         priceable: false
         virtual: true
         draggable: false
-        phantom: true
+        phantom: false
         margin-top: 1
         margin-right: 77
 
@@ -844,12 +859,21 @@ ScrollImbue < UIWidget
           margin-left: 6
       
       UIWidget
-        id: horizontalArrow
+        id: horizontalArrow1
         size: 14 25
         anchors.left: prev.right
         anchors.verticalCenter: requiredItems.verticalCenter
-        margin-left: 171
-        image-source: /images/ui/icon-arrow7x7-right
+        margin-left: 158
+        image-source: /game_forge/images/arrows/icon-arrow-rightlarge
+        phantom: false
+
+      UIWidget
+        id: horizontalArrow2
+        size: 14 25
+        anchors.left: prev.right
+        anchors.verticalCenter: prev.verticalCenter
+        margin-left: 12
+        image-source: /game_forge/images/arrows/icon-arrow-rightlarge
         phantom: false
 
       Label
@@ -878,7 +902,8 @@ ScrollImbue < UIWidget
         anchors.left: prev.left
         anchors.right: prev.right
         anchors.top: prev.bottom
-        image-source: /images/ui/panel_flat
+        image-source: /images/modern_ui/image1015925
+        image-border: 1
         Label
           id: cost
           anchors.horizontalCenter: parent.horizontalCenter

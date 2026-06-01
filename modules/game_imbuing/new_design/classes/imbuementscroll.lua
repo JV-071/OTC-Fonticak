@@ -20,6 +20,7 @@ function scrollApi.setup(availableImbuements, needItems)
         itemWidget:setItemId(self.itemId)
         itemWidget:setImageSmooth(true)
         itemWidget:setItemCount(1)
+        itemWidget:setTooltip(tr("Blank Imbuement Scroll"))
     end
 
     self.onSelectSlotImbue()

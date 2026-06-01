@@ -115,6 +115,10 @@ function initialize()
 
     imbuementTracker:setup()
     imbuementTracker:hide()
+
+    if g_game.isOnline() then
+        onGameStart()
+    end
 end
 
 function onMiniWindowOpen()
@@ -201,6 +205,7 @@ local function addTrackedItem(item)
     trackedItem.item:setItem(item['item'])
     ItemsDatabase.setTier(trackedItem.item, trackedItem.item:getItem())
     trackedItem.item:setVirtual(true)
+    
     local maxDuration = 0
     
     -- Create a table to track which slots are active
@@ -220,6 +225,7 @@ local function addTrackedItem(item)
             slot.icon:setImageSource('/images/game/imbuing/icons/' .. imbuementSlot['iconId'])
             slot:setMarginLeft(3)
             setDuration(slot.duration, imbuementSlot['duration'])
+            slot:setTooltip(imbuementSlot['name'])
             trackedItem.imbuementSlots:addChild(slot)
             if imbuementSlot['duration'] > maxDuration then
                 maxDuration = imbuementSlot['duration']
@@ -229,6 +235,7 @@ local function addTrackedItem(item)
             local inactiveSlot = g_ui.createWidget('ImbuementSlotInactive')
             inactiveSlot:setId('inactiveSlot' .. slotIndex)
             inactiveSlot:setMarginLeft(3)
+            inactiveSlot:setTooltip(tr("Empty Slot"))
             trackedItem.imbuementSlots:addChild(inactiveSlot)
         end
     end

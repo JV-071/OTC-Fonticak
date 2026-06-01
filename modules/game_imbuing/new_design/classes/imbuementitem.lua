@@ -55,13 +55,15 @@ function itemApi.configureWindow(window)
             if i <= self.slots then
                 slotWidget:setVisible(true)
                 local imbuement = self.activeSlots["slot"..i - 1]
-                if imbuement and imbuement[1] then
-                    if imbuement[1].id and imbuement[1].id ~= 0 then
-                        slotWidget.resource:setImageSource("/images/game/imbuing/icons/" .. imbuement[1]["imageId"])
-                    end
+                if imbuement and imbuement[1] and imbuement[1].id and imbuement[1].id ~= 0 then
+                    slotWidget.resource:setImageSource("/images/game/imbuing/icons/" .. imbuement[1]["imageId"])
+                    slotWidget:setTooltip(imbuement[1].name)
+                else
+                    slotWidget:setTooltip(tr("Empty Slot"))
                 end
             else
                 slotWidget:setVisible(false)
+                slotWidget:removeTooltip()
             end
         end
     end
@@ -75,6 +77,7 @@ function itemApi.configureWindow(window)
         itemWidget:setItemId(self.itemId)
         itemWidget:setImageSmooth(true)
         itemWidget:setItemCount(1)
+        itemWidget:setTooltip(context.capitalize(itemName))
         if ItemsDatabase and ItemsDatabase.setTier then
             ItemsDatabase.setTier(itemWidget, self.tier, false)
         end

@@ -34,11 +34,13 @@ ImbuementTrackerMenu < PopupMenu
 
 ImbuementSlot < FlatPanel
   size: 34 34
+  phantom: false
 
   UIWidget
     id: icon
     anchors.fill: parent
     margin: 1
+    phantom: true
 
   Label
     id: duration
@@ -49,15 +51,18 @@ ImbuementSlot < FlatPanel
     font: verdana-11px-rounded
     color: #ffff00
     margin-top: 3
+    phantom: true
 
 ImbuementSlotInactive < FlatPanel
   size: 34 34
+  phantom: false
 
   UIWidget
     anchors.fill: parent
     margin: 1
     image-source: /images/game/trackers/imbue-slot
     image-rect: 0 0 32 32
+    phantom: true
 
 InventoryItem < Panel
   height: 36
