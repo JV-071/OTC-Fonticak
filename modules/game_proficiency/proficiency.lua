@@ -637,8 +637,8 @@ function onWeaponProficiency(itemId, experience, perks, marketCategory)
     end
 
     if WeaponProficiency.window and WeaponProficiency.window:isVisible() then
-        -- Refresh item list to update stars and order
-        WeaponProficiency:refreshItemList()
+        -- Update stars only (lighter than full rebuild)
+        WeaponProficiency:updateVisibleItemStars()
 
         WeaponProficiency:onUpdateSelectedProficiency(itemId)
 
@@ -677,9 +677,9 @@ function onWeaponProficiencyExperience(itemId, experience, hasUnusedPerk)
     -- Show/hide highlight on proficiency button based on unused perks
     updateProficiencyHighlight()
 
-    -- Refresh item list if window is visible
+    -- Update item stars if window is visible (lighter than full rebuild)
     if WeaponProficiency.window and WeaponProficiency.window:isVisible() then
-        WeaponProficiency:refreshItemList()
+        WeaponProficiency:updateVisibleItemStars()
     end
 
     -- Update top bar proficiency display
@@ -1052,8 +1052,7 @@ function createWindow()
         end
     end
 
-    -- Initialize item list
-    WeaponProficiency:refreshItemList()
+    -- Skip initial refreshItemList here; show() will call it
     return true
 end
 
@@ -1394,7 +1393,7 @@ function WeaponProficiency:toggleFilterOption(button)
 end
 
 -- Refresh item list based on current filters and category
-function WeaponProficiency:refreshItemList()
+function WeaponProficiency:refreshItemList(preserveScroll)
     if not self.window then
         return
     end
@@ -1403,6 +1402,8 @@ function WeaponProficiency:refreshItemList()
     if not itemList then
         return
     end
+
+    local scrollValue = self.itemListScroll and self.itemListScroll:getValue() or 0
 
     -- Get current category from dropdown
     local categoryDropdown = self.window:recursiveGetChildById('classFilter')
@@ -1524,7 +1525,78 @@ function WeaponProficiency:refreshItemList()
     end
 
     if self.itemListScroll then
-        self.itemListScroll:setValue(0)
+        if preserveScroll then
+            self.itemListScroll:setValue(scrollValue)
+        else
+            self.itemListScroll:setValue(0)
+        end
+    end
+end
+
+-- Lightweight function to update only the star indicators on already-rendered items
+-- This avoids the expensive destroy-and-recreate cycle of refreshItemList
+function WeaponProficiency:updateVisibleItemStars()
+    if not self.window then
+        return
+    end
+
+    local itemList = self.window:recursiveGetChildById('itemList')
+    if not itemList then
+        return
+    end
+
+    local children = itemList:getChildren()
+    if not children then
+        return
+    end
+
+    for _, child in ipairs(children) do
+        local itemWidget = child:getChildById('item')
+        if itemWidget then
+            local item = itemWidget:getItem()
+            local displayId = item and item:getId() or 0
+            if displayId > 0 then
+                -- Find the marketItem for this displayId
+                local cacheId = nil
+                local allItems = self.itemList[MarketCategory.WeaponsAll] or {}
+                local marketItem = nil
+                for _, mi in ipairs(allItems) do
+                    if (mi.displayId or mi.originalId) == displayId then
+                        marketItem = mi
+                        cacheId = mi.originalId or displayId
+                        break
+                    end
+                end
+
+                if cacheId then
+                    local starPanel = child:getChildById('starsBackground')
+                    if starPanel then
+                        starPanel:destroyChildren()
+
+                        local cacheEntry = self.cacheList[cacheId]
+                        local exp = cacheEntry and cacheEntry.exp or 0
+                        local weaponLevel = 0
+                        if marketItem then
+                            weaponLevel = ProficiencyData:getCurrentLevelByExp(
+                                marketItem.displayItem, exp, false,
+                                marketItem.thingType, marketItem.marketData) or 0
+                        end
+
+                        if weaponLevel > 0 then
+                            local mastery = isMasteryAchieved(
+                                marketItem.displayItem, cacheId,
+                                marketItem.thingType, marketItem.marketData)
+                            for i = 1, weaponLevel do
+                                local star = g_ui.createWidget("MiniStar", starPanel)
+                                if star and mastery then
+                                    star:setImageSource(proficiencyImage("icon-star-tiny-gold"))
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
     end
 end
 

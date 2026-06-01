@@ -392,6 +392,7 @@ MainWindow
 
       TextList
         id: itemList
+        background-color: #3b3a3aff
         size: 202 220
         anchors.top: prev.bottom
         anchors.left: parent.left
