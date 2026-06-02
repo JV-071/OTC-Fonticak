@@ -196,6 +196,8 @@ function g_tooltip.display(text)
         return
     end
 
+    text = text:wrap(350)
+
     toolTipLabel:setText(text)
     toolTipLabel:resizeToText()
     toolTipLabel:resize(toolTipLabel:getWidth() + 4, toolTipLabel:getHeight() + 4)
@@ -217,6 +219,8 @@ function g_tooltip.parseColoreDisplay(text)
     if not toolTipLabel then
         return
     end
+
+    text = text:wrap(350)
 
     toolTipLabel:parseColoredText(text)
     toolTipLabel:resizeToText()

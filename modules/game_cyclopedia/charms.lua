@@ -43,7 +43,7 @@ local staticCharms = {
 	[15] = { name = 'Low Blow', unlockPrice = 1200 },
 	[16] = { name = 'Divine Wrath', unlockPrice = 1500 },
 	[17] = { name = 'Vampiric Embrace', unlockPrice = 500 },
-	[18] = { name = "Void's Call", unlockPrice = 500 },
+	[18] = { name = "Void's Call", unlockPrice = 1500 },
 	[19] = { name = 'Savage Blow', unlockPrice = 1200 },
 	[20] = { name = 'Fatal Hold', unlockPrice = 500 },
 	[21] = { name = 'Void Inversion', unlockPrice = 500 },
@@ -325,6 +325,7 @@ local function setupCharmDetails(charm)
 	end
 	if widgets.charmImage then
 		widgets.charmImage:setImageSource('/images/game/cyclopedia/monster-bonus-effects/monster-bonus-effects-' .. charm.id)
+		widgets.charmImage:setTooltip(charm.name .. ": " .. charm.description)
 	end
 	if widgets.level then
 		widgets.level:setVisible(unlocked)
@@ -395,6 +396,12 @@ local function refreshCharmGrid()
 			local image = row:recursiveGetChildById('charmImage')
 			if image then
 				image:setImageSource('/images/game/cyclopedia/monster-bonus-effects/monster-bonus-effects-' .. id)
+			end
+
+			local tooltipText = charm.name .. ": " .. charm.description
+			row:setTooltip(tooltipText)
+			if image then
+				image:setTooltip(tooltipText)
 			end
 
 			local opacityItem = row:recursiveGetChildById('opacityItem')

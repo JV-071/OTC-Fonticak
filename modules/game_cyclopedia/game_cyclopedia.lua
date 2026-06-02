@@ -49,7 +49,7 @@ function terminate()
 	elseif unregisterBestiaryProtocol then
 		unregisterBestiaryProtocol()
 	else
-		ProtocolGame.unregisterOpcode(0x48)
+		ProtocolGame.unregisterOpcode(CyclopediaOpcode and CyclopediaOpcode.Send or 0x39)
 	end
 	
 	if cyclopediaButton then

@@ -1,10 +1,10 @@
 CyclopediaOpcode = {
-	Info = 0x48,
-	Category = 0x49,
-	Monster = 0x4A,
-	Charm = 0x4C,
-	Tracker = 0x4D,
-	Send = 0x48
+	Info = 0x39,
+	Category = 0x3A,
+	Monster = 0x3B,
+	Charm = 0x3E,
+	Tracker = 0x3F,
+	Send = 0x39
 }
 
 protoData = protoData or {}
@@ -1193,7 +1193,7 @@ ensureBestiaryTrackerWindow = function()
 	end
 
 	bestiaryTrackerWindow:setup()
-	bestiaryTrackerWindow:hide()
+	bestiaryTrackerWindow:setupOnStart()
 	return bestiaryTrackerWindow
 end
 
