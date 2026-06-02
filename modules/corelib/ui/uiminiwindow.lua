@@ -228,6 +228,9 @@ function UIMiniWindow:onDragEnter(mousePos)
         return false
     end
 
+    g_effects.cancelMove(self)
+    self.smoothDropActive = nil
+
     if parent:getClassName() == 'UIMiniWindowContainer' then
         self.oldParentDrag = parent
         self.oldParentDragIndex = parent:getChildIndex(self)
@@ -256,7 +259,9 @@ function UIMiniWindow:onDragLeave(droppedWidget, mousePos)
         self.movedIndex = nil
     end
 
-    self:saveParent(self:getParent())
+    if not self.smoothDropActive then
+        self:saveParent(self:getParent())
+    end
 
     -- Note: It seems to prevent the minimap, inventory, and health widgets from moving off the interface panel.
     if self.moveOnlyToMain or droppedWidget and droppedWidget.onlyPhantomDrop then
