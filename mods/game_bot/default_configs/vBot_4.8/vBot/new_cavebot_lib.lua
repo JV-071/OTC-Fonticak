@@ -22,14 +22,36 @@ local LOCKER_ACCESSTILE_MODIFIERS = {
     [3500] = {-1,0}
 }
 
+local warnedMissingTargetBotConfig = false
+
 local function CaveBotConfigParse()
-	local name = storage["_configs"]["targetbot_configs"]["selected"]
-    if not name then
-        return warn("[vBot] Please create a new TargetBot config and reset bot")
+    local configs = storage["_configs"]
+    local targetbotConfigs = type(configs) == "table" and configs["targetbot_configs"] or nil
+    local name = type(targetbotConfigs) == "table" and targetbotConfigs["selected"] or nil
+    if not name or name == "" then
+        if not warnedMissingTargetBotConfig and not storage._warnedMissingTargetBotConfig then
+            warnedMissingTargetBotConfig = true
+            storage._warnedMissingTargetBotConfig = true
+            warn("[vBot] TargetBot config is missing. Create or select one to enable loot helpers.")
+        end
+        return nil
     end
-	local file = configDir .. "/targetbot_configs/" .. name .. ".json"
-	local data = g_resources.readFileContents(file)
-	return Config.parse(data)['looting']
+
+    local file = configDir .. "/targetbot_configs/" .. name .. ".json"
+    if not g_resources.fileExists(file) then
+        if not warnedMissingTargetBotConfig and not storage._warnedMissingTargetBotConfig then
+            warnedMissingTargetBotConfig = true
+            storage._warnedMissingTargetBotConfig = true
+            warn("[vBot] TargetBot config '" .. name .. "' was not found. Create or select one to enable loot helpers.")
+        end
+        return nil
+    end
+
+    warnedMissingTargetBotConfig = false
+    storage._warnedMissingTargetBotConfig = false
+    local data = g_resources.readFileContents(file)
+    local parsed = Config.parse(data)
+    return parsed and parsed['looting'] or nil
 end
 
 local function getNearTiles(pos)
@@ -75,7 +97,8 @@ CaveBot.Status = "waiting"
 --- Parses config and extracts loot list.
 -- @return table
 function CaveBot.GetLootItems()
-    local t = CaveBotConfigParse() and CaveBotConfigParse()["items"] or nil
+    local lootConfig = CaveBotConfigParse()
+    local t = lootConfig and lootConfig["items"] or nil
 
     local returnTable = {}
     if type(t) == "table" then
@@ -106,7 +129,8 @@ end
 --- Parses config and extracts loot containers.
 -- @return table
 function CaveBot.GetLootContainers()
-    local t = CaveBotConfigParse() and CaveBotConfigParse()["containers"] or nil
+    local lootConfig = CaveBotConfigParse()
+    local t = lootConfig and lootConfig["containers"] or nil
 
     local returnTable = {}
     if type(t) == "table" then

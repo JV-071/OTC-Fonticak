@@ -4,6 +4,8 @@ contentsPanel = nil
 editWindow = nil
 
 local checkEvent = nil
+local loginRefreshEvent = nil
+local botWatchEvent = nil
 
 local botStorage = {}
 local botStorageFile = nil
@@ -20,6 +22,30 @@ local statusLabel = nil
 local configManagerUrl = "http://otclient.ovh/configs.php"
 
 local updateBotTabsHeight = nil
+
+local function isCurrentBotEnabled()
+  if not g_game.isOnline() then
+    return false
+  end
+
+  local settings = g_settings.getNode('bot') or {}
+  local index = g_game.getCharacterName() .. "_" .. g_game.getClientVersion()
+  return settings[index] and settings[index].enabled
+end
+
+local function isBotPanelEmpty()
+  return botTabs and botTabs.tabs and #botTabs.tabs == 0
+end
+
+local function watchBotState()
+  if not g_game.isOnline() then
+    return
+  end
+
+  if isCurrentBotEnabled() and isBotPanelEmpty() then
+    refresh()
+  end
+end
 
 function init()
   dofile("executor")
@@ -89,6 +115,7 @@ function init()
   editWindow:hide()
 
   loadConfigsList()
+  botWatchEvent = cycleEvent(watchBotState, 500)
 
   if g_game.isOnline() then
     clear()
@@ -99,6 +126,8 @@ end
 function terminate()
   save()
   clear()
+  removeEvent(botWatchEvent)
+  botWatchEvent = nil
 
   disconnect(g_game, {
     onGameStart = online,
@@ -157,6 +186,35 @@ function clear()
   if g_sounds then
     g_sounds.getChannel(SoundChannels.Bot):stop()
   end
+end
+
+local function cancelLoginRefresh()
+  removeEvent(loginRefreshEvent)
+  loginRefreshEvent = nil
+end
+
+local function scheduleLoginRefresh()
+  cancelLoginRefresh()
+
+  local attempts = 0
+  local function tryRefresh()
+    if not g_game.isOnline() then
+      loginRefreshEvent = nil
+      return
+    end
+
+    attempts = attempts + 1
+    refresh()
+
+    if botExecutor or attempts >= 8 then
+      loginRefreshEvent = nil
+      return
+    end
+
+    loginRefreshEvent = scheduleEvent(tryRefresh, 250)
+  end
+
+  loginRefreshEvent = scheduleEvent(tryRefresh, 250)
 end
 
 function updateBotTabsHeight()
@@ -338,12 +396,11 @@ end
 
 function online()
   botWindow:setupOnStart()
-  if not (modules.client_profiles and modules.client_profiles.ChangedProfile) then
-    scheduleEvent(refresh, 20)
-  end
+  scheduleLoginRefresh()
 end
 
 function offline()
+  cancelLoginRefresh()
   save()
   clear()
   editWindow:hide()
