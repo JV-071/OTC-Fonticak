@@ -160,6 +160,9 @@ function controllerNpcTrader:onCloseNpcTrade()
             removeEvent(controllerNpcTrader.sellAllWithDelayEvent)
             controllerNpcTrader.sellAllWithDelayEvent = nil
         end
+        if controllerNpcTrader.clearTradeQueue then
+            controllerNpcTrader:clearTradeQueue()
+        end
         -- Clean up state
         controllerNpcTrader.buyItems = {}
         controllerNpcTrader.sellItems = {}

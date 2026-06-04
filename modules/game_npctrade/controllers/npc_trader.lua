@@ -274,7 +274,8 @@ function controllerNpcTrader:updateAmount(amount)
         else
             local sellable = self:getSellQuantity(self.selectedItem.ptr)
             minAmount = sellable > 0 and controllerNpcTrader.MIN_AMOUNT or 0
-            maxAmount = math.max(minAmount, sellable)
+            local maxPossible = g_game.getFeature(GameDoubleShopSellAmount) and 10000 or 100
+            maxAmount = math.max(minAmount, math.min(maxPossible, sellable))
         end
         if amount > maxAmount then
             amount = maxAmount
@@ -577,15 +578,70 @@ function controllerNpcTrader:onTextMessage(mode, text)
     end
 end
 
+function controllerNpcTrader:clearTradeQueue()
+    if self.tradeEvent then
+        removeEvent(self.tradeEvent)
+        self.tradeEvent = nil
+    end
+    self.tradeQueue = {}
+end
+
+function controllerNpcTrader:processTradeQueue()
+    if not self.tradeQueue or #self.tradeQueue == 0 then
+        self.tradeEvent = nil
+        return
+    end
+
+    local action = table.remove(self.tradeQueue, 1)
+    if action.type == 'buy' then
+        g_game.buyItem(action.itemPtr, action.amount, action.ignoreCapacity, action.buyWithBackpack)
+    elseif action.type == 'sell' then
+        g_game.sellItem(action.itemPtr, action.amount, action.ignoreEquipped)
+    end
+
+    if #self.tradeQueue > 0 then
+        self.tradeEvent = scheduleEvent(function()
+            self:processTradeQueue()
+        end, 1050)
+    else
+        self.tradeEvent = nil
+    end
+end
+
 function controllerNpcTrader:executeTrade()
     if not self.selectedItem then
         return
     end
+    self:clearTradeQueue()
+
+    local maxAmountPerPacket = g_game.getFeature(GameDoubleShopSellAmount) and 10000 or 100
+    local amountToTrade = self.amount
     if self.tradeMode == controllerNpcTrader.BUY then
-        g_game.buyItem(self.selectedItem.ptr, self.amount, self.ignoreCapacity, self.buyWithBackpack)
+        while amountToTrade > 0 do
+            local chunk = math.min(amountToTrade, maxAmountPerPacket)
+            table.insert(self.tradeQueue, {
+                type = 'buy',
+                itemPtr = self.selectedItem.ptr,
+                amount = chunk,
+                ignoreCapacity = self.ignoreCapacity,
+                buyWithBackpack = self.buyWithBackpack
+            })
+            amountToTrade = amountToTrade - chunk
+        end
     else
-        g_game.sellItem(self.selectedItem.ptr, self.amount, self.ignoreEquipped)
+        while amountToTrade > 0 do
+            local chunk = math.min(amountToTrade, maxAmountPerPacket)
+            table.insert(self.tradeQueue, {
+                type = 'sell',
+                itemPtr = self.selectedItem.ptr,
+                amount = chunk,
+                ignoreEquipped = self.ignoreEquipped
+            })
+            amountToTrade = amountToTrade - chunk
+        end
     end
+
+    self:processTradeQueue()
 end
 
 function controllerNpcTrader:clearSearch()

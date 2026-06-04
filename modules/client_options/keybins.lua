@@ -4,7 +4,7 @@ local changedKeybinds = {}
 local changedHotkeys = {}
 local presetWindow = nil
 local actionSearchEvent
-local keyEditWindow = nil
+keyEditWindow = nil
 local chatModeGroup
 
 -- controls and keybinds
@@ -98,6 +98,10 @@ function okPresetWindow()
         end
         panels.keybindsPanel.presets.list:addOption(presetName)
         panels.keybindsPanel.presets.list:setCurrentOption(presetName)
+        if panels.customHotkeys then
+            panels.customHotkeys.presets.list:addOption(presetName)
+            panels.customHotkeys.presets.list:setCurrentOption(presetName)
+        end
     elseif presetWindow.action == 'copy' then
         if not Keybind.copyPreset(selectedPreset, presetName) then
             return
@@ -107,9 +111,16 @@ function okPresetWindow()
         end
         panels.keybindsPanel.presets.list:addOption(presetName)
         panels.keybindsPanel.presets.list:setCurrentOption(presetName)
+        if panels.customHotkeys then
+            panels.customHotkeys.presets.list:addOption(presetName)
+            panels.customHotkeys.presets.list:setCurrentOption(presetName)
+        end
     elseif presetWindow.action == 'rename' then
         if selectedPreset ~= presetName then
             panels.keybindsPanel.presets.list:updateCurrentOption(presetName)
+            if panels.customHotkeys then
+                panels.customHotkeys.presets.list:updateCurrentOption(presetName)
+            end
             if changedOptions['currentPreset'] then
                 changedOptions['currentPreset'].value = presetName
             end
@@ -121,6 +132,9 @@ function okPresetWindow()
     elseif presetWindow.action == 'remove' then
         if Keybind.removePreset(selectedPreset) then
             panels.keybindsPanel.presets.list:removeOption(selectedPreset)
+            if panels.customHotkeys then
+                panels.customHotkeys.presets.list:removeOption(selectedPreset)
+            end
             if modules.game_actionbar and modules.game_actionbar.removeHotkeySet then
                 modules.game_actionbar.removeHotkeySet(selectedPreset)
                 if modules.game_actionbar.selectHotkeySet then
@@ -766,6 +780,10 @@ function listKeybindsComboBox(value)
     changedHotkeys = {}
     applyChangedOptions()
     updateKeybinds()
+    if panels.customHotkeys then
+        panels.customHotkeys.presets.list:setCurrentOption(value, true)
+        updateCustomHotkeys()
+    end
 end
 
 function debug()

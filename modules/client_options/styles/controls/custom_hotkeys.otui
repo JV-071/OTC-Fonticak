@@ -1,0 +1,271 @@
+OptionContainer < FlatPanel
+  height: 22
+  padding: 3
+
+CustomHotkeysTableRow < UITableRow
+  focusable: true
+  height: 20
+  background-color: alpha
+  even-background-color: alpha
+  odd-background-color: #484848
+  text-align: left
+  @onFocusChange: for _, child in ipairs(self:getChildren()) do child:setChecked(self:isFocused()) end
+  layout: horizontalBox
+
+  $focus:
+    background-color: #585858
+
+EditableCustomHotkeysTableColumn < Label
+  color: #c0c0c0
+  text-align: left
+  focusable: false
+  text-offset: 28 0
+  font: verdana-11px-monochrome
+  @onCheckChange: self.edit:setVisible(self:isChecked())
+
+  UIItem
+    id: item
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.left: parent.left
+    margin-left: 2
+    size: 16 16
+    virtual: true
+    phantom: true
+    visible: false
+
+  Button
+    id: edit
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.right: parent.right
+    size: 13 13
+    margin-right: 2
+    icon: /images/ui/icon-edit
+    visible: false
+
+EditableCustomKeysTableColumn < Label
+  color: #c0c0c0
+  text-align: left
+  focusable: false
+  text-offset: 2 0
+  font: verdana-11px-monochrome
+  @onCheckChange: self.edit:setVisible(self:isChecked())
+
+  Button
+    id: edit
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.right: parent.right
+    size: 13 13
+    margin-right: 2
+    icon: /images/ui/icon-edit
+    visible: false
+
+CustomHotkeysTableHeaderRow < TableHeaderRow
+  padding: 0
+  height: 18
+
+CustomHotkeysTableHeaderColumn < UITableHeaderColumn
+  font: verdana-11px-monochrome
+  text-offset: 2 0
+  text-align: left
+  height: 14
+  color: #c0c0c0
+  background: #363636
+
+UIWidget
+  anchors.fill: parent
+  visible: false
+  Panel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: parent.top
+    id: presets
+    height: 20
+    layout:
+      type: horizontalBox
+      spacing: 5
+
+    QtComboBox
+      id: list
+      width: 320
+
+    SmallButton
+      id: add
+      width: 30
+      !text: tr("Add")
+
+    SmallButton
+      id: copy
+      width: 35
+      !text: tr("Copy")
+
+    SmallButton
+      id: rename
+      width: 45
+      !text: tr("Rename")
+
+    SmallButton
+      id: remove
+      width: 45
+      !text: tr("Remove")
+  
+  SmallReversedQtPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    height: 22
+    margin-top: 7
+    
+    OptionCheckBoxMarked
+      id: autoSwitchPreset
+      !text: tr('Auto-Switch Hotkey Preset')
+      !tooltip: tr('If you have named your hotkey presets the same like your\ncharacters and have checked this option, the preset with the same\nname as the corresponding character will be activated upon login\nautomatically.')
+
+  SmallReversedQtPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    height: 22
+    margin-top: 7
+    id: panel
+    OptionContainer
+      anchors.left: parent.left
+      anchors.right: parent.right
+      image-source: ""
+      id: chatMode
+      $!first:
+        margin-left:40
+      layout:
+        type: horizontalBox
+        spacing: 127
+      
+      CheckBoxCircle
+        id: on
+        text-horizontal-auto-resize: true
+        !text: tr("Chat Mode On")
+        margin-bottom: -5
+        text-offset: 20 -3
+      CheckBoxCircle
+        id: off
+        text-horizontal-auto-resize: true
+        !text: tr("Chat Mode Off")
+        margin-bottom: -5
+        text-offset: 20 -3
+        $mobile:
+          margin-left:-120
+    UIWidget
+      id: toolTipWidget
+      image-source: /images/icons/show_gui_help_grey
+      size: 12 12  
+      anchors.right: parent.right
+      margin-right: 3
+      !tooltip: tr('There are two chat modes for each hotkey preset: Chat On and Chat\nOff. You can find a small button that tells you which mode is\n currently active on the right side of the entry line of the chat\n console. Press this button to switch between the two chat modes. Of\n course, you can also set a hotkey to toggle between Chat On and Off.\n\n                      * Chat On\n                          In this mode, you will be able to write text in the entry line of\n                          the chat console. However, if you have assigned an action to\n                          a letter key, the action will be triggered.\n\n                      * Chat On*\n                          This is the temporary Chat On mode. In the default hotkey\n                          preset, the Return key switches between Chat Off and this\n                          mode. If the chat mode is off and you press this hotkey, it\n                          temporarily activates the chat mode so that you can write\n                          one message in the console. As soon as you press Return to\n                          send the message, your chat mode will be set to Chat Off\n                          again so that you can continue walking with WASD, for\n                          example.\n                      * Chat Off\n                          In this mode, you will not be able to write any text in the\n                          entry line of the console, but you can use your predefined\n                          hotkeys to walk or cast spells, for example. You can assign\n                          functions to all keys of your keyboard, e.g., walk with WASD.')
+     
+  Panel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    id: search
+    height: 20
+    margin-top: 5
+    layout:
+      type: horizontalBox
+      spacing: 6
+    
+    Label
+      text-offset: 0 3
+      font: verdana-11px-monochrome
+      !text: tr('Type to search for a hotkey:')
+    
+    TextEdit
+      id: field
+      width: 300
+      $mobile:
+        width: 140
+
+    UIButton
+      id: clear
+      image-source: /images/ui/button-clear-18x18-up
+      image-clip: 0 0 20 20
+      width: 20
+      $pressed:
+        image-source: /images/ui/button-clear-18x18-down
+
+  Panel
+    id: tablePanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+    height: 305
+    margin-top: 5
+    image-source: /images/ui/1pixel_down_frame
+    image-border: 1
+    background: #404040
+
+    Table
+      id: keybinds
+      anchors.fill: parent
+      margin: 1
+      table-data: keybindsData
+      row-style: CustomHotkeysTableRow
+      column-style: EditableCustomKeysTableColumn
+      header-row-style: CustomHotkeysTableHeaderRow
+      header-column-style: CustomHotkeysTableHeaderColumn
+
+      CustomHotkeysTableHeaderRow
+        id: header
+
+        CustomHotkeysTableHeaderColumn
+          !text: tr("Action")
+          width: 286
+        
+        VerticalSeparator
+
+        CustomHotkeysTableHeaderColumn
+          !text: tr("Primary Key")
+          width: 100
+        
+        VerticalSeparator
+
+        CustomHotkeysTableHeaderColumn
+          !text: tr("Secondary Key")
+          width: 100
+    
+      HorizontalSeparator
+
+    TableData
+      id: keybindsData
+      anchors.fill: keybinds
+      margin-top: 20
+      padding-bottom: 1
+      vertical-scrollbar: scrollBar
+    
+    VerticalQtScrollBar
+      id: scrollBar
+      anchors.top: parent.top
+      anchors.bottom: parent.bottom
+      anchors.right: parent.right
+      step: 16
+      pixels-scroll: true
+  
+  Panel
+    id: buttons
+    height: 20
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: prev.bottom
+
+    SmallButton
+      id: newAction
+      anchors.top: parent.top
+      anchors.left: parent.left
+      width: 75
+      !text: tr('New Action')
+      visible: true
+
+    SmallButton
+      id: reset
+      anchors.top: parent.top
+      anchors.right: parent.right
+      width: 45
+      margin-top: 8
+      !text: tr('Reset')

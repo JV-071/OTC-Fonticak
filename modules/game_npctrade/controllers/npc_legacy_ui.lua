@@ -31,6 +31,8 @@ local ignoreCapacity = nil
 local ignoreEquipped = nil
 local showAllItems = nil
 local sellAllButton = nil
+local tradeQueue = {}
+local tradeEvent = nil
 
 local playerFreeCapacity = 0
 local playerMoney = 0
@@ -87,8 +89,39 @@ function controllerNpcTrader:legacy_init()
     initialized = true
 end
 
+local function clearTradeQueue()
+    if tradeEvent then
+        removeEvent(tradeEvent)
+        tradeEvent = nil
+    end
+    tradeQueue = {}
+end
+
+local function processTradeQueue()
+    if not tradeQueue or #tradeQueue == 0 then
+        tradeEvent = nil
+        return
+    end
+
+    local action = table.remove(tradeQueue, 1)
+    if action.type == 'buy' then
+        g_game.buyItem(action.itemPtr, action.amount, action.ignoreCapacity, action.buyWithBackpack)
+    elseif action.type == 'sell' then
+        g_game.sellItem(action.itemPtr, action.amount, action.ignoreEquipped)
+    end
+
+    if #tradeQueue > 0 then
+        tradeEvent = scheduleEvent(function()
+            processTradeQueue()
+        end, 1050)
+    else
+        tradeEvent = nil
+    end
+end
+
 function controllerNpcTrader:legacy_terminate()
     initialized = false
+    clearTradeQueue()
     if npcWindow then
         npcWindow:destroy()
     end
@@ -114,6 +147,7 @@ function controllerNpcTrader:legacy_show()
 end
 
 function controllerNpcTrader:legacy_hide()
+    clearTradeQueue()
     if npcWindow then
         npcWindow:hide()
     end
@@ -156,12 +190,35 @@ function onTradeTypeChange(radioTabs, selected, deselected)
 end
 
 function onTradeClick()
+    clearTradeQueue()
+    local maxAmountPerPacket = g_game.getFeature(GameDoubleShopSellAmount) and 10000 or 100
+    local amountToTrade = quantityScroll:getValue()
     if getCurrentTradeType() == BUY then
-        g_game.buyItem(selectedItem.ptr, quantityScroll:getValue(), ignoreCapacity:isChecked(),
-                       buyWithBackpack:isChecked())
+        while amountToTrade > 0 do
+            local chunk = math.min(amountToTrade, maxAmountPerPacket)
+            table.insert(tradeQueue, {
+                type = 'buy',
+                itemPtr = selectedItem.ptr,
+                amount = chunk,
+                ignoreCapacity = ignoreCapacity:isChecked(),
+                buyWithBackpack = buyWithBackpack:isChecked()
+            })
+            amountToTrade = amountToTrade - chunk
+        end
     else
-        g_game.sellItem(selectedItem.ptr, quantityScroll:getValue(), ignoreEquipped:isChecked())
+        while amountToTrade > 0 do
+            local chunk = math.min(amountToTrade, maxAmountPerPacket)
+            table.insert(tradeQueue, {
+                type = 'sell',
+                itemPtr = selectedItem.ptr,
+                amount = chunk,
+                ignoreEquipped = ignoreEquipped:isChecked()
+            })
+            amountToTrade = amountToTrade - chunk
+        end
     end
+
+    processTradeQueue()
 end
 
 function onSearchTextChange()

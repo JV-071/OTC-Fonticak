@@ -43,7 +43,8 @@ HOTKEY_ACTION = {
   USE = 5,
   TEXT = 6,
   TEXT_AUTO = 7,
-  SPELL = 8
+  SPELL = 8,
+  SMART_CAST = 9
 }
 
 function Keybind.init()
@@ -83,7 +84,7 @@ function Keybind.init()
     for chatMode = CHAT_MODE.ON, CHAT_MODE.OFF do
       Keybind.hotkeys[chatMode][preset] = {}
       local hotkeyId = 1
-      local hotkeys = config:getNode(chatMode)
+      local hotkeys = config:getNode(chatMode) or config:getNode(tostring(chatMode))
 
       if hotkeys then
         local hotkey = hotkeys[tostring(hotkeyId)]
@@ -784,6 +785,7 @@ function Keybind.removeAllHotkeys(chatMode)
   Keybind.hotkeys[chatMode][Keybind.currentPreset] = {}
 
   Keybind.configs.hotkeys[Keybind.currentPreset]:remove(chatMode)
+  Keybind.configs.hotkeys[Keybind.currentPreset]:remove(tostring(chatMode))
   Keybind.configs.hotkeys[Keybind.currentPreset]:save()
 end
 
@@ -890,17 +892,22 @@ function Keybind.hotkeyCallback(hotkeyId, chatMode)
       g_game.useInventoryItem(data.itemId)
     end
   elseif action == HOTKEY_ACTION.TEXT then
+    local text = hotkey.data.text or ""
+    text = text:gsub("^%[Text%]%s*", ""):gsub("^%[Spell%]%s*", "")
     if modules.game_interface.isChatVisible() then
-      modules.game_console.setTextEditText(hotkey.data.text)
+      modules.game_console.setTextEditText(text)
     end
   elseif action == HOTKEY_ACTION.TEXT_AUTO then
+    local text = hotkey.data.text or ""
+    text = text:gsub("^%[Text%]%s*", ""):gsub("^%[Spell%]%s*", "")
     if modules.game_interface.isChatVisible() then
-      modules.game_console.sendMessage(hotkey.data.text)
+      modules.game_console.sendMessage(text)
     else
-      g_game.talk(hotkey.data.text)
+      g_game.talk(text)
     end
   elseif action == HOTKEY_ACTION.SPELL then
-    local text = data.words
+    local text = data.words or ""
+    text = text:gsub("^%[Text%]%s*", ""):gsub("^%[Spell%]%s*", "")
     if data.parameter then
       text = text .. " " .. data.parameter
     end
@@ -909,6 +916,21 @@ function Keybind.hotkeyCallback(hotkeyId, chatMode)
       modules.game_console.sendMessage(text)
     else
       g_game.talk(text)
+    end
+  elseif action == HOTKEY_ACTION.SMART_CAST then
+    local pos = g_window.getMousePosition()
+    local clickedWidget = modules.game_interface.getRootPanel():recursiveGetChildByPos(pos, false)
+    if clickedWidget and clickedWidget:getClassName() == 'UIGameMap' then
+      local tile = clickedWidget:getTile(pos)
+      if tile then
+        local item = Item.create(data.itemId)
+        if g_game.getClientVersion() < 780 then
+          item = g_game.findPlayerItem(data.itemId, data.subType or -1)
+        end
+        if item then
+          g_game.useWith(item, tile:getTopUseThing(), data.subType or -1)
+        end
+      end
     end
   end
 end

@@ -9,7 +9,8 @@ panels = {
     interface = nil,
     misc = nil,
     miscHelp = nil,
-    keybindsPanel = nil
+    keybindsPanel = nil,
+    customHotkeys = nil
 }
 
 -- Hook into application exit to ensure settings are saved
@@ -29,6 +30,9 @@ local buttons = { {
     subCategories = { {
         text = "General Hotkeys",
         open = "keybindsPanel"
+    }, {
+        text = "Custom Hotkeys",
+        open = "customHotkeys"
     } }
 }, {
     text = "Interface",
@@ -300,6 +304,7 @@ function controller:onInit()
 
     panels.generalPanel = g_ui.loadUI('styles/controls/general', controller.ui.optionsTabContent)
     panels.keybindsPanel = g_ui.loadUI('styles/controls/keybinds', controller.ui.optionsTabContent)
+    panels.customHotkeys = g_ui.loadUI('styles/controls/custom_hotkeys', controller.ui.optionsTabContent)
 
     panels.graphicsPanel = g_ui.loadUI('styles/graphics/graphics', controller.ui.optionsTabContent)
     panels.graphicsEffectsPanel = g_ui.loadUI('styles/graphics/effects', controller.ui.optionsTabContent)
@@ -344,6 +349,7 @@ function controller:onInit()
     end, 1000)  -- 1 second delay to make sure everything is loaded
     
     init_binds()
+    init_custom_hotkeys()
 
     Keybind.new("UI", "Toggle Fullscreen", "Ctrl+Shift+F", "")
     Keybind.bind("UI", "Toggle Fullscreen", {
@@ -396,6 +402,7 @@ function controller:onTerminate()
     Keybind.delete("Sound", "Mute/unmute")
 
     terminate_binds()
+    terminate_custom_hotkeys()
 end
 
 function controller:onGameStart()
@@ -503,6 +510,7 @@ function toggle()
     end
     show()
     updateKeybinds()
+    updateCustomHotkeys()
 end
 
 function addTab(name, panel, icon)
