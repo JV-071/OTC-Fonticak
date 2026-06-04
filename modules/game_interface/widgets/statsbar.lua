@@ -558,8 +558,12 @@ local function openDropMenu(mousePos)
 
     menu:addSeparator()
     menu:addOption(tr('Hide Customisable Status Bars'), function()
-        StatsBar.hideAll()
-        modules.game_healthcircle.setStatsBarOption("hide")
+        if modules.client_options then
+            modules.client_options.setOption('showCustomisableStatusBars', false)
+        else
+            StatsBar.hideAll()
+            modules.game_healthcircle.setStatsBarOption("hide")
+        end
     end)
 
     menu:display(mousePos)

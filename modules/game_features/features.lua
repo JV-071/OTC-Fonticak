@@ -78,6 +78,7 @@ controller:registerEvents(g_game, {
             g_game.enableFeature(GameDoublePlayerGoodsMoney) 
             g_game.enableFeature(GameCreatureIcons)
             g_game.enableFeature(GamePurseSlot)
+            g_game.enableFeature(GameColorizedLootValue)
             g_game.enableFeature(GamePrey)
             g_game.enableFeature(GameSpellList)
             g_game.enableFeature(GameThingUpgradeClassification)

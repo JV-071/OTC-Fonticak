@@ -251,6 +251,7 @@ UIWidget
       margin-top: 7
       height: 22
       OptionCheckBox
+        id: showCustomisableStatusBars
         !text: tr('Show Customisable Status Bars')
         !tooltip: tr('Check this box to show the status bars for your character\'s most \nimportant attributes: their health and their mana. \nIf you have enabled this option and you right-click on the status \nbars field, a menu will open up which allows you to individualise \nyour status bars even further: \n* You can switch your status bars to one of the four sides \naround your game window. \n* You can display your status bars in different styles. \n* Additionally, you can decide to show the progress bars for \none, several or all of your skills or your experience level. If \nyou place your mouse pointer on one of the bars, a tooltip \nwill open up which shows your progress to the next skill or \nlevel in percent.')
   
@@ -262,6 +263,7 @@ UIWidget
       margin-top: 7
       height: 22
       OptionCheckBox
+        id: showStatusBars
         !text: tr('Show Status Bars')
         !tooltip: tr('Check this box to show your character\'s status bars for mana and \nhealth in the sidebar.')
 

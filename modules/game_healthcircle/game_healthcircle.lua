@@ -788,6 +788,24 @@ function setPlayerValues()
 end
 
 function setStatsBarOption(dimension, placement)
+    if not chooseStatsBarDimension or not chooseStatsBarPlacement then
+        return
+    end
+
+    if not dimension or dimension == "" then
+        dimension = g_settings.getString('statsbar_dimension')
+        if dimension == "" then
+            dimension = "compact"
+        end
+    end
+
+    if not placement or placement == "" then
+        placement = g_settings.getString('statsbar_placement')
+        if placement == "" then
+            placement = "top"
+        end
+    end
+
     chooseStatsBarDimension:setCurrentOptionByData(dimension, true)
     chooseStatsBarPlacement:setCurrentOptionByData(placement, true)
 end

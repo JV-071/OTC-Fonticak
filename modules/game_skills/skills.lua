@@ -230,13 +230,12 @@ end
 
 local SKILL_GROUPS = {
     offence = {
-        'damageHealing', 'attackValue', 'convertedDamage', 'convertedElement',
-        'lifeLeech', 'manaLeech', 'criticalChance', 'criticalExtraDamage', 'onslaught'
+        'lifeLeech', 'manaLeech', 'criticalHit', 'criticalChance', 'criticalExtraDamage', 'onslaught'
     },
     defence = {
         'physicalResist', 'fireResist', 'earthResist', 'energyResist', 'IceResist', 
         'HolyResist', 'deathResist', 'HealingResist', 'drowResist', 'lifedrainResist', 
-        'manadRainResist', 'defenceValue', 'armorValue', 'mitigation', 'dodge', 
+        'manadRainResist', 'defenceValue', 'armorValue', 'mantraValue', 'mitigation', 'dodge',
         'damageReflection'
     },
     misc = {
@@ -257,6 +256,18 @@ local SKILL_GROUPS = {
     }
 }
 
+local ALWAYS_SHOW_ZERO_STATS = {
+    lifeLeech = true,
+    manaLeech = true,
+    criticalHit = true,
+    criticalChance = true,
+    criticalExtraDamage = true,
+    defenceValue = true,
+    armorValue = true,
+    mantraValue = true,
+    mitigation = true
+}
+
 local function setSkillGroupVisibility(groupName, visible)
     local skills = SKILL_GROUPS[groupName]
     if not skills then return end
@@ -267,7 +278,9 @@ local function setSkillGroupVisibility(groupName, visible)
             if visible then
                 local valueWidget = skill:getChildById('value')
                 local text = valueWidget and valueWidget:getText() or ""
-                if g_game.getClientVersion() >= 1410 or wheelSkillStatsEnabled then
+                if ALWAYS_SHOW_ZERO_STATS[skillId] then
+                    skill:setVisible(true)
+                elseif g_game.getClientVersion() >= 1410 or wheelSkillStatsEnabled then
                     skill:setVisible(text ~= "" and text ~= "0" and text ~= "0%" and 
                         text ~= "+ 0%" and text ~= "0.0%" and text ~= "+ 0.0%")
                 else
@@ -360,9 +373,15 @@ local function hideOldClientStats()
     setSkillGroupVisibility('offence', features.charSkills or wheelSkillStatsEnabled)
     setSkillGroupVisibility('defence', features.charSkills or wheelSkillStatsEnabled)
     setSkillGroupVisibility('misc', features.charSkills)
-    setSkillGroupVisibility('GameAdditionalSkills', features.additionalSkills)
-    setSkillGroupVisibility('GameForgeSkillStats1332', features.forgeSkills and version >= 1332)
-    setSkillGroupVisibility('GameForgeSkillStats', features.forgeSkills)
+    setSkillGroupVisibility('GameAdditionalSkills', false)
+    setSkillGroupVisibility('GameForgeSkillStats1332', false)
+    setSkillGroupVisibility('GameForgeSkillStats', false)
+
+    local player = g_game.getLocalPlayer()
+    if features.charSkills or wheelSkillStatsEnabled then
+        onImbuementsChange(player, statsCache.lifeLeech, statsCache.manaLeech, statsCache.critChance, statsCache.critDamage, statsCache.onslaught)
+        onDefenseInfoChange(player, statsCache.defense, statsCache.armor, statsCache.mitigation, statsCache.dodge, statsCache.damageReflection)
+    end
     -- For very old clients (before 1098) the skills list fits without a slider.
     -- Keep the scrollbar track visible but hide the draggable slider so it's not interactive.
     if version < 1098 then
@@ -1324,6 +1343,14 @@ function onBaseMagicLevelChange(localPlayer, baseMagicLevel)
 end
 
 function onSkillChange(localPlayer, id, level, percent)
+    if id >= Skill.CriticalChance and id <= Skill.Transcendence then
+        local skill = skillsWindow:recursiveGetChildById('skillId' .. id)
+        if skill then
+            skill:setVisible(false)
+        end
+        return
+    end
+
     setSkillValue('skillId' .. id, level)
     setSkillPercent('skillId' .. id, percent, tr('You have %s percent to go', 100 - percent))
 
@@ -1408,7 +1435,7 @@ local function setSkillValueWithTooltips(id, value, tooltip, showPercentage, col
     if not skill then
         return
     end
-    
+
     if g_game.getClientVersion() < 1412 and not wheelSkillStatsEnabled then
         local oldClientStats = {
             'skillId7', 'skillId8', 'skillId9', 'skillId10', 'skillId11', 'skillId12', 
@@ -1417,7 +1444,7 @@ local function setSkillValueWithTooltips(id, value, tooltip, showPercentage, col
             'criticalHit', 'lifeLeech', 'manaLeech', 'criticalChance', 'criticalExtraDamage', 'onslaught',
             'physicalResist', 'fireResist', 'earthResist', 'energyResist', 'IceResist', 
             'HolyResist', 'deathResist', 'HealingResist', 'drowResist', 'lifedrainResist', 
-            'manadRainResist', 'defenceValue', 'armorValue', 'mitigation', 'dodge', 
+            'manadRainResist', 'defenceValue', 'armorValue', 'mantraValue', 'mitigation', 'dodge',
             'damageReflection', 'momentum', 'transcendence', 'amplification'
         }
         
@@ -1447,7 +1474,9 @@ local function setSkillValueWithTooltips(id, value, tooltip, showPercentage, col
     
     if value ~= nil then
         local shouldHide = false
-        if value == 0 or (type(value) == "number" and math.abs(value) < 0.0001) then
+        if ALWAYS_SHOW_ZERO_STATS[id] then
+            shouldHide = false
+        elseif value == 0 or (type(value) == "number" and math.abs(value) < 0.0001) then
             shouldHide = true
         elseif showPercentage then
             local percentValue = math.floor(value * 10000) / 100
@@ -1490,33 +1519,21 @@ end
 function onFlatDamageHealingChange(localPlayer, flatBonus)
     -- Cache the data regardless of visibility
     statsCache.flatDamageHealing = flatBonus or 0
-    
-    local char = g_game.getCharacterName()
-    if char and skillSettings and skillSettings[char] and skillSettings[char]['offenceStats_visible'] ~= false then
-        skillsWindow:recursiveGetChildById("separadorOnOffenceInfoChange"):setVisible(true)
+
+    local skill = skillsWindow:recursiveGetChildById('damageHealing')
+    if skill then
+        skill:setVisible(false)
     end
-    local tooltips = "This flat bonus is the main source of your character's power, added \nto most of the damage and healing values you cause."
-    setSkillValueWithTooltips('damageHealing', flatBonus, tooltips, false)
 end
 
 function onAttackInfoChange(localPlayer, attackValue, attackElement)
     -- Cache the data regardless of visibility
     statsCache.attackValue = attackValue or 0
     statsCache.attackElement = attackElement or 0
-    
-    local char = g_game.getCharacterName()
-    if char and skillSettings and skillSettings[char] and skillSettings[char]['offenceStats_visible'] ~= false then
-        skillsWindow:recursiveGetChildById("separadorOnOffenceInfoChange"):setVisible(true)
-    end
-    local tooltips = "This is your character's basic attack power whenever you enter a \nfight with a weapon or your fists. It does not apply to any spells \nyou cast. The attack value is calculated from the weapon's attack\n value, the corresponding weapon skill, combat tactics, the bonus \nreceived from the Revelation Perks and the player's level. The \nvalue represents the average damage you would inflict on a\ncreature which had no kind of defence or protection."
-    setSkillValueWithTooltips('attackValue', attackValue, tooltips, false)
+
     local skill = skillsWindow:recursiveGetChildById("attackValue")
     if skill then
-        local element = clientCombat[attackElement]
-        if element then
-            skill:getChildById('icon'):setImageSource(element.path)
-            skill:getChildById('icon'):setImageSize({width = 9, height = 9})
-        end
+        skill:setVisible(false)
     end
 end
 
@@ -1550,20 +1567,22 @@ function onImbuementsChange(localPlayer, lifeLeech, manaLeech, critChance, critD
         onslaught = "You get +1% of the damage dealt as hit points"
     }
     
+    for _, statId in ipairs({'damageHealing', 'attackValue', 'convertedDamage', 'convertedElement'}) do
+        local stat = skillsWindow:recursiveGetChildById(statId)
+        if stat then
+            stat:setVisible(false)
+        end
+    end
+
     setSkillValueWithTooltips('lifeLeech', lifeLeech, tooltips.lifeLeech, true)
     setSkillValueWithTooltips('manaLeech', manaLeech, tooltips.manaLeech, true)
     setSkillValueWithTooltips('criticalChance', critChance, tooltips.critChance, true)
     setSkillValueWithTooltips('criticalExtraDamage', critDamage, tooltips.critDamage, true)
     setSkillValueWithTooltips('onslaught', onslaught, tooltips.onslaught, true)
+
     local criticalHitWidget = skillsWindow:recursiveGetChildById("criticalHit")
     if criticalHitWidget then
-        local critChanceWidget = skillsWindow:recursiveGetChildById("criticalChance")
-        local critDamageWidget = skillsWindow:recursiveGetChildById("criticalExtraDamage")
-        local shouldShowCriticalHit = false
-        if (critChanceWidget and critChanceWidget:isVisible()) or (critDamageWidget and critDamageWidget:isVisible()) then
-            shouldShowCriticalHit = true
-        end
-        criticalHitWidget:setVisible(shouldShowCriticalHit)
+        criticalHitWidget:setVisible(true)
     end
 end
 
@@ -1624,6 +1643,7 @@ function onDefenseInfoChange(localPlayer, defense, armor, mitigation, dodge, dam
     
     setSkillValueWithTooltips('defenceValue', defense, tooltips.defense, false)
     setSkillValueWithTooltips('armorValue', armor, tooltips.armor, false)
+    setSkillValueWithTooltips('mantraValue', 0, "This shows how well your mantra protects you from elemental attacks.", false)
     setSkillValueWithTooltips('mitigation', mitigation, tooltips.mitigation, true)
     setSkillValueWithTooltips('dodge', dodge, tooltips.dodge, true)
     setSkillValueWithTooltips('damageReflection', damageReflection, false, true)
