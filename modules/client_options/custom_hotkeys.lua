@@ -12,7 +12,7 @@ local ActionTexts = {
   [HOTKEY_ACTION.USE_TARGET] = "(use object on target)",
   [HOTKEY_ACTION.EQUIP] = "(equip/unequip object)",
   [HOTKEY_ACTION.USE] = "(use object)",
-  [HOTKEY_ACTION.SMART_CAST] = "(use object at cursor position)"
+  [HOTKEY_ACTION.SMART_CAST] = "(use object on cursor position)"
 }
 
 local ActionColors = {
@@ -26,6 +26,241 @@ local ActionColors = {
   [HOTKEY_ACTION.SPELL] = "#dfdfdf",
   [HOTKEY_ACTION.SMART_CAST] = "#e788fb"
 }
+
+local function isStringEmpty(text)
+  return not text or tostring(text):trim():len() == 0
+end
+
+local function isCustomHotkeyConflict(keyCombo, currentHotkeyId)
+  if isStringEmpty(keyCombo) then
+    return false
+  end
+
+  local hotkeys = Keybind.hotkeys[Keybind.chatMode] and Keybind.hotkeys[Keybind.chatMode][Keybind.currentPreset]
+  if not hotkeys then
+    return false
+  end
+
+  for _, hotkey in ipairs(hotkeys) do
+    if hotkey.hotkeyId ~= currentHotkeyId and (hotkey.primary == keyCombo or hotkey.secondary == keyCombo) then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function clearConflictingCustomHotkeys(keyCombo, currentHotkeyId)
+  if isStringEmpty(keyCombo) then
+    return
+  end
+
+  local hotkeys = Keybind.hotkeys[Keybind.chatMode] and Keybind.hotkeys[Keybind.chatMode][Keybind.currentPreset]
+  if not hotkeys then
+    return
+  end
+
+  for _, hotkey in ipairs(hotkeys) do
+    if hotkey.hotkeyId ~= currentHotkeyId and (hotkey.primary == keyCombo or hotkey.secondary == keyCombo) then
+      local primary = hotkey.primary == keyCombo and "" or hotkey.primary
+      local secondary = hotkey.secondary == keyCombo and "" or hotkey.secondary
+      Keybind.editHotkeyKeys(hotkey.hotkeyId, primary, secondary, Keybind.chatMode)
+    end
+  end
+end
+
+local function clearConflictingActionbarHotkey(keyCombo)
+  if isStringEmpty(keyCombo) then
+    return
+  end
+
+  if modules.game_actionbar and removeHotkeyFromActionBar then
+    removeHotkeyFromActionBar(keyCombo)
+  end
+
+  if modules.game_hotkeys and modules.game_hotkeys.removeHotkeyByCombo then
+    modules.game_hotkeys.removeHotkeyByCombo(keyCombo)
+  end
+end
+
+local function isActionbarHotkeyConflict(keyCombo)
+  if isStringEmpty(keyCombo) then
+    return false
+  end
+
+  if modules.game_hotkeys and modules.game_hotkeys.isHotkeyUsedByManager and modules.game_hotkeys.isHotkeyUsedByManager(keyCombo) then
+    return true
+  end
+
+  if modules.game_actionbar and ApiJson and ApiJson.hasCurrentHotkeySet and ApiJson.hasCurrentHotkeySet() then
+    local chatMode = modules.game_console and modules.game_console.isChatEnabled and modules.game_console.isChatEnabled() and 'chatOn' or 'chatOff'
+    if ApiJson.getHotkeyEntries then
+      for _, data in ipairs(ApiJson.getHotkeyEntries(chatMode)) do
+        if data["actionsetting"] and data["keysequence"] and data["keysequence"]:lower() == keyCombo:lower() then
+          return true
+        end
+      end
+    end
+  end
+
+  return false
+end
+
+local function isDefaultKeybindConflict(keyCombo)
+  if isStringEmpty(keyCombo) then
+    return false
+  end
+
+  for _, keybind in pairs(Keybind.defaultKeybinds) do
+    local keys = Keybind.getKeybindKeys(keybind.category, keybind.action, Keybind.chatMode, Keybind.currentPreset)
+    if keys.primary == keyCombo or keys.secondary == keyCombo then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function clearConflictingDefaultKeybinds(keyCombo)
+  if isStringEmpty(keyCombo) then
+    return
+  end
+
+  for _, keybind in pairs(Keybind.defaultKeybinds) do
+    local keys = Keybind.getKeybindKeys(keybind.category, keybind.action, Keybind.chatMode, Keybind.currentPreset)
+    if keys.primary == keyCombo then
+      Keybind.setPrimaryActionKey(keybind.category, keybind.action, Keybind.currentPreset, "", Keybind.chatMode)
+    end
+    if keys.secondary == keyCombo then
+      Keybind.setSecondaryActionKey(keybind.category, keybind.action, Keybind.currentPreset, "", Keybind.chatMode)
+    end
+  end
+end
+
+local function updateKeyEditConflictState(keyCombo, currentHotkeyId)
+  local reserved = Keybind.reservedKeys[keyCombo]
+  local used = reserved or isDefaultKeybindConflict(keyCombo) or isCustomHotkeyConflict(keyCombo, currentHotkeyId) or isActionbarHotkeyConflict(keyCombo)
+
+  keyEditWindow.used:setVisible(used)
+  if reserved then
+    keyEditWindow.used:setText(tr("This hotkey is already in use and cannot be overwritten."))
+  elseif used then
+    keyEditWindow.used:setText(tr("This hotkey is already in use and will be overwritten."))
+  end
+  keyEditWindow.buttons.ok:setEnabled(not reserved)
+end
+
+local function editCustomHotkeyKey(row, secondary)
+  local column = secondary and 5 or 3
+  local otherColumn = secondary and 3 or 5
+  keyEditWindow:setText(secondary and tr("Edit Secondary Key") or tr("Edit Primary Key"))
+  keyEditWindow.info:setText(tr("Click 'Ok' to assign the keybind. Click 'Clear' to remove it."))
+  keyEditWindow.alone:setVisible(false)
+  keyEditWindow.used:setVisible(false)
+  keyEditWindow.keyCombo:setText(row:getChildByIndex(column):getText())
+  keyEditWindow.buttons.ok:setEnabled(true)
+
+  local rowCaptureCallback = function(assignWindow, keyCode, keyboardModifiers, keyText)
+    local keyCombo = determineKeyComboDesc(keyCode, keyboardModifiers, keyText)
+    if keyCombo == "Shift" or keyCombo == "Ctrl" or keyCombo == "Alt" then
+      keyCombo = ""
+    end
+
+    keyEditWindow.keyCombo:setText(keyCombo)
+    updateKeyEditConflictState(keyCombo, row.hotkeyId)
+    return true
+  end
+
+  local closeWindow = function()
+    disconnect(keyEditWindow, { onKeyDown = rowCaptureCallback })
+    keyEditWindow:hide()
+    keyEditWindow:ungrabKeyboard()
+    show()
+  end
+
+  connect(keyEditWindow, { onKeyDown = rowCaptureCallback })
+
+  keyEditWindow.buttons.ok.onClick = function()
+    local keyCombo = keyEditWindow.keyCombo:getText()
+    if Keybind.reservedKeys[keyCombo] then
+      return
+    end
+
+    clearConflictingCustomHotkeys(keyCombo, row.hotkeyId)
+    clearConflictingDefaultKeybinds(keyCombo)
+    clearConflictingActionbarHotkey(keyCombo)
+
+    if secondary then
+      Keybind.editHotkeyKeys(row.hotkeyId, row:getChildByIndex(otherColumn):getText(), keyCombo, Keybind.chatMode)
+    else
+      Keybind.editHotkeyKeys(row.hotkeyId, keyCombo, row:getChildByIndex(otherColumn):getText(), Keybind.chatMode)
+    end
+
+    closeWindow()
+    updateCustomHotkeys()
+  end
+
+  keyEditWindow.buttons.clear.onClick = function()
+    if secondary then
+      Keybind.editHotkeyKeys(row.hotkeyId, row:getChildByIndex(otherColumn):getText(), "", Keybind.chatMode)
+    else
+      Keybind.editHotkeyKeys(row.hotkeyId, "", row:getChildByIndex(otherColumn):getText(), Keybind.chatMode)
+    end
+
+    closeWindow()
+    updateCustomHotkeys()
+  end
+
+  keyEditWindow.buttons.cancel.onClick = closeWindow
+
+  keyEditWindow:show()
+  keyEditWindow:raise()
+  keyEditWindow:focus()
+  keyEditWindow:grabKeyboard()
+  hide()
+end
+
+local function spellMatchesPlayerVocation(spellData, player)
+  if not player or not spellData or not spellData.vocations then
+    return true
+  end
+
+  local vocations = spellData.vocations
+  if type(vocations) ~= 'table' then
+    return true
+  end
+
+  local vocationId = player:getVocation()
+  local vocationText = tostring(vocationId):lower()
+  if translateVocation then
+    vocationText = tostring(translateVocation(vocationId)):lower()
+  end
+
+  for _, vocation in pairs(vocations) do
+    local value = tostring(vocation):lower()
+    if value == vocationText or value == tostring(vocationId) or value == 'all' or value == 'none' then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function getThingClassification(item)
+  if item and item.getClassification then
+    return item:getClassification()
+  end
+
+  return 0
+end
+
+local function showInvalidObjectMessage()
+  if modules.game_textmessage and modules.game_textmessage.displayFailureMessage then
+    modules.game_textmessage.displayFailureMessage(tr('Invalid object!'))
+  else
+    pwarning('Invalid object!')
+  end
+end
 
 function init_custom_hotkeys()
   g_ui.importStyle('styles/controls/assign_spell')
@@ -106,7 +341,7 @@ end
 function onCustomChatModeChange()
   local mode = chatModeGroup:getSelectedWidget() == panels.customHotkeys.panel.chatMode.on and CHAT_MODE.ON or CHAT_MODE.OFF
   Keybind.setChatMode(mode)
-  
+
   -- Sync general keybinds chat mode checkbox if possible
   if panels.keybindsPanel then
     if mode == CHAT_MODE.ON then
@@ -199,105 +434,11 @@ end
 
 -- Key assignment
 function editCustomHotkeyPrimary(row)
-  keyEditWindow:setText(tr("Edit Primary Key"))
-  keyEditWindow.info:setText(tr("Click 'Ok' to assign the keybind. Click 'Clear' to remove it."))
-  keyEditWindow.alone:setVisible(false)
-  keyEditWindow.keyCombo:setText(row:getChildByIndex(3):getText())
-
-  local rowCaptureCallback = function(assignWindow, keyCode, keyboardModifiers)
-    local keyCombo = determineKeyComboDesc(keyCode, keyboardModifiers)
-    local keyUsed = Keybind.isKeyComboUsed(keyCombo, nil, nil, Keybind.chatMode)
-    keyEditWindow.buttons.ok:setEnabled(not keyUsed)
-    keyEditWindow.used:setVisible(keyUsed)
-    keyEditWindow.keyCombo:setText(keyCombo)
-  end
-
-  connect(keyEditWindow, { onKeyDown = rowCaptureCallback })
-
-  keyEditWindow.buttons.ok.onClick = function()
-    local keyCombo = keyEditWindow.keyCombo:getText()
-    row:getChildByIndex(3):setText(keyCombo)
-    Keybind.editHotkeyKeys(row.hotkeyId, keyCombo, row:getChildByIndex(5):getText(), Keybind.chatMode)
-    
-    disconnect(keyEditWindow, { onKeyDown = rowCaptureCallback })
-    keyEditWindow:hide()
-    keyEditWindow:ungrabKeyboard()
-    show()
-  end
-
-  keyEditWindow.buttons.clear.onClick = function()
-    row:getChildByIndex(3):setText("")
-    Keybind.editHotkeyKeys(row.hotkeyId, "", row:getChildByIndex(5):getText(), Keybind.chatMode)
-    
-    disconnect(keyEditWindow, { onKeyDown = rowCaptureCallback })
-    keyEditWindow:hide()
-    keyEditWindow:ungrabKeyboard()
-    show()
-  end
-
-  keyEditWindow.buttons.cancel.onClick = function()
-    disconnect(keyEditWindow, { onKeyDown = rowCaptureCallback })
-    keyEditWindow:hide()
-    keyEditWindow:ungrabKeyboard()
-    show()
-  end
-
-  keyEditWindow:show()
-  keyEditWindow:raise()
-  keyEditWindow:focus()
-  keyEditWindow:grabKeyboard()
-  hide()
+  editCustomHotkeyKey(row, false)
 end
 
 function editCustomHotkeySecondary(row)
-  keyEditWindow:setText(tr("Edit Secondary Key"))
-  keyEditWindow.info:setText(tr("Click 'Ok' to assign the keybind. Click 'Clear' to remove it."))
-  keyEditWindow.alone:setVisible(false)
-  keyEditWindow.keyCombo:setText(row:getChildByIndex(5):getText())
-
-  local rowCaptureCallback = function(assignWindow, keyCode, keyboardModifiers)
-    local keyCombo = determineKeyComboDesc(keyCode, keyboardModifiers)
-    local keyUsed = Keybind.isKeyComboUsed(keyCombo, nil, nil, Keybind.chatMode)
-    keyEditWindow.buttons.ok:setEnabled(not keyUsed)
-    keyEditWindow.used:setVisible(keyUsed)
-    keyEditWindow.keyCombo:setText(keyCombo)
-  end
-
-  connect(keyEditWindow, { onKeyDown = rowCaptureCallback })
-
-  keyEditWindow.buttons.ok.onClick = function()
-    local keyCombo = keyEditWindow.keyCombo:getText()
-    row:getChildByIndex(5):setText(keyCombo)
-    Keybind.editHotkeyKeys(row.hotkeyId, row:getChildByIndex(3):getText(), keyCombo, Keybind.chatMode)
-    
-    disconnect(keyEditWindow, { onKeyDown = rowCaptureCallback })
-    keyEditWindow:hide()
-    keyEditWindow:ungrabKeyboard()
-    show()
-  end
-
-  keyEditWindow.buttons.clear.onClick = function()
-    row:getChildByIndex(5):setText("")
-    Keybind.editHotkeyKeys(row.hotkeyId, row:getChildByIndex(3):getText(), "", Keybind.chatMode)
-    
-    disconnect(keyEditWindow, { onKeyDown = rowCaptureCallback })
-    keyEditWindow:hide()
-    keyEditWindow:ungrabKeyboard()
-    show()
-  end
-
-  keyEditWindow.buttons.cancel.onClick = function()
-    disconnect(keyEditWindow, { onKeyDown = rowCaptureCallback })
-    keyEditWindow:hide()
-    keyEditWindow:ungrabKeyboard()
-    show()
-  end
-
-  keyEditWindow:show()
-  keyEditWindow:raise()
-  keyEditWindow:focus()
-  keyEditWindow:grabKeyboard()
-  hide()
+  editCustomHotkeyKey(row, true)
 end
 
 -- New and editing actions
@@ -353,26 +494,32 @@ function assignSpellDialog(row)
 
   for spellName, spellData in pairs(spells) do
     if not player then break end
-    
-    local widget = g_ui.createWidget('SpellPreview', spellWindow.contentPanel.spellList)
-    local iconId = tonumber(spellData.clientId)
-    
-    radio:addWidget(widget)
-    widget:setId(spellData.id)
-    widget:setText(spellName.."\n"..spellData.words)
-    widget.words = spellData.words
-    widget.voc = spellData.vocations
-    widget.param = spellData.parameter
-    widget.source = SpelllistSettings['Default'].iconFile
-    widget.clip = Spells.getImageClip(iconId, 'Default')
-    widget.image:setImageSource(widget.source)
-    widget.image:setImageClip(widget.clip)
-    
-    if spellData.level then
-      widget.levelLabel:setVisible(true)
-      widget.levelLabel:setText(string.format("Level: %d", spellData.level))
-      if player:getLevel() < spellData.level then
-        widget.image.gray:setVisible(true)
+
+    if spellMatchesPlayerVocation(spellData, player) then
+      local widget = g_ui.createWidget('SpellPreview', spellWindow.contentPanel.spellList)
+      local iconId = tonumber(spellData.clientId)
+
+      radio:addWidget(widget)
+      widget:setId(spellData.id)
+      widget:setText(spellName.."\n"..spellData.words)
+      widget.words = spellData.words
+      widget.voc = spellData.vocations
+      widget.param = spellData.parameter
+      widget.source = SpelllistSettings['Default'].iconFile
+      widget.clip = Spells.getImageClip(iconId, 'Default')
+      if SpellIcons and SpellIcons[spellName] and SpelllistSettings['Default'].iconsFolder and Spells.getImageClipNormal then
+        widget.source = SpelllistSettings['Default'].iconsFolder .. SpellIcons[spellName][1]
+        widget.clip = Spells.getImageClipNormal(SpellIcons[spellName][2])
+      end
+      widget.image:setImageSource(widget.source)
+      widget.image:setImageClip(widget.clip)
+
+      if spellData.level then
+        widget.levelLabel:setVisible(true)
+        widget.levelLabel:setText(string.format("Level: %d", spellData.level))
+        if player:getLevel() < spellData.level then
+          widget.image.gray:setVisible(true)
+        end
       end
     end
   end
@@ -384,6 +531,18 @@ function assignSpellDialog(row)
     spellWindow.contentPanel.spellList:moveChildToIndex(w, i)
   end
 
+  local filterSpells = function()
+    local search = spellWindow.contentPanel.searchText:getText():trim():lower()
+    for _, widget in ipairs(spellWindow.contentPanel.spellList:getChildren()) do
+      local visible = search:len() == 0 or widget:getText():lower():find(search, 1, true)
+      widget:setVisible(visible)
+    end
+  end
+  spellWindow.contentPanel.searchText.onTextChange = filterSpells
+  spellWindow.contentPanel.clearButton.onClick = function()
+    spellWindow.contentPanel.searchText:clearText()
+  end
+
   radio.onSelectionChange = function(widget, selected)
     if selected then
       spellWindow.contentPanel.preview:setText(selected:getText())
@@ -392,6 +551,9 @@ function assignSpellDialog(row)
       spellWindow.contentPanel.paramLabel:setOn(selected.param)
       spellWindow.contentPanel.paramText:setEnabled(selected.param)
       spellWindow.contentPanel.paramText:clearText()
+      if selected.words and selected.words:lower():find("levitate") then
+        spellWindow.contentPanel.paramText:setText("up|down")
+      end
       spellWindow.contentPanel.spellList:ensureChildVisible(widget)
     end
   end
@@ -406,6 +568,13 @@ function assignSpellDialog(row)
 
     local paramText = spellWindow.contentPanel.paramText:getText()
     local words = selected.words
+    if paramText:lower():find("up|down") then
+      paramText = ""
+    end
+    if (words .. " " .. paramText):find("utevo res ina") then
+      words = "utevo res ina"
+      paramText = paramText:gsub("ina ", "")
+    end
     local spellData = { words = words, parameter = paramText }
 
     if row then
@@ -489,6 +658,13 @@ function onChooseObjectMouseRelease(self, mousePosition, mouseButton)
     return true
   end
 
+  local itemType = g_things.getThingType(itemId)
+  if not itemType or (itemType.isPickupable and not itemType:isPickupable()) then
+    controller.ui:show()
+    showInvalidObjectMessage()
+    return true
+  end
+
   assignObjectDialog(activeRow, itemId, itemTier)
   return true
 end
@@ -518,10 +694,13 @@ function assignObjectDialog(row, itemId, itemTier)
 
   local radio = UIRadioGroup.create()
   local item = objectWindow.contentPanel.item:getItem()
-  
+  local hasSmartCast = item and modules.game_actionbar and modules.game_actionbar.getSmartCast and modules.game_actionbar.getSmartCast(item:getId())
+
   -- Smart mode checkbox visibility
   objectWindow.contentPanel.checks.smart:setVisible(false)
-  if item and (item:getClothSlot() > 0 or (item:isUsable() and modules.game_actionbar and modules.game_actionbar.getSmartCast and modules.game_actionbar.getSmartCast(item:getId()))) then
+  objectWindow.contentPanel.checks.smart:setEnabled(false)
+  objectWindow.contentPanel.checks.smart:setChecked(false)
+  if item and item:getClothSlot() > 0 and ((item.hasExpireStop and item:hasExpireStop()) or hasSmartCast) then
     objectWindow.contentPanel.checks.smart:setVisible(true)
     if row and row.hotkeyData and row.hotkeyData.smartMode then
       objectWindow.contentPanel.checks.smart:setChecked(true)
@@ -548,7 +727,7 @@ function assignObjectDialog(row, itemId, itemTier)
       end
     end
 
-    if (i == 5 and item and item:getClothSlot() > 0) or (i == 5 and item and item:getClothSlot() == 0 and (item:isUsable() or item:isAmmo())) then
+    if (i == 5 and item and item:getClothSlot() > 0) or (i == 5 and item and item:getClothSlot() == 0 and (getThingClassification(item) > 0 or item:isAmmo() or hasSmartCast)) then
       child:setEnabled(true)
       if not radio:getSelectedWidget() then
         radio:selectWidget(child)
@@ -607,6 +786,10 @@ function assignObjectDialog(row, itemId, itemTier)
       smartMode = objectWindow.contentPanel.checks.smart:isChecked()
     end
 
+    if item and getThingClassification(item) == 0 then
+      itemTier = 0
+    end
+
     local itemData = { itemId = itemId, upgradeTier = itemTier, smartMode = smartMode }
 
     if row then
@@ -655,10 +838,30 @@ function assignTextDialog(row)
   if row and (row.actionType == HOTKEY_ACTION.TEXT or row.actionType == HOTKEY_ACTION.TEXT_AUTO) then
     textWindow.contentPanel.text:setText(row.hotkeyData.text or "")
     textWindow.contentPanel.checkPanel.tick:setChecked(row.actionType == HOTKEY_ACTION.TEXT_AUTO)
+  else
+    textWindow.contentPanel.checkPanel.tick:setChecked(true)
   end
+
+  local updateButtons = function()
+    local enabled = not isStringEmpty(textWindow.contentPanel.text:getText())
+    textWindow.contentPanel.buttonOk:setEnabled(enabled)
+    textWindow.contentPanel.buttonApply:setEnabled(enabled)
+  end
+  textWindow.contentPanel.text.onTextChange = updateButtons
+  updateButtons()
+  textWindow.contentPanel.text:focus()
+  textWindow.contentPanel.text:setCursorPos(textWindow.contentPanel.text:getText():len())
 
   local okFunc = function()
     local text = textWindow.contentPanel.text:getText()
+    if isStringEmpty(text) then
+      return
+    end
+
+    if Spells and Spells.getSpellFormatedName then
+      text = Spells.getSpellFormatedName(text)
+    end
+
     local autoSay = textWindow.contentPanel.checkPanel.tick:isChecked()
     local actionType = autoSay and HOTKEY_ACTION.TEXT_AUTO or HOTKEY_ACTION.TEXT
     local textData = { text = text }

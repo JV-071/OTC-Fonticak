@@ -71,12 +71,11 @@ function init()
     Keybind.bind("Windows", "Show/hide Hotkeys", {
       {
         type = KEY_DOWN,
-        callback = toggle,
+        callback = openCustomHotkeys,
       }
     })
     hotkeysWindow = g_ui.displayUI('hotkeys_manager')
     hotkeysWindow:setVisible(false)
-    hotkeysWindowButton = modules.client_topmenu.addRightGameToggleButton('hotkeysWindowButton', tr('Hotkeys'), '/images/options/hotkeys', toggle)
 
     currentHotkeys = hotkeysWindow:getChildById('currentHotkeys')
     currentItemPreview = hotkeysWindow:getChildById('itemPreview')
@@ -130,7 +129,7 @@ function init()
         onGameEnd = offline
     })
 
-    load()
+    hotkeysManagerLoaded = true
 end
 
 function terminate()
@@ -173,7 +172,6 @@ function configure(savePerServer, savePerCharacter)
 end
 
 function online()
-    reload()
     hide()
 end
 
@@ -183,23 +181,22 @@ function offline()
 end
 
 function show()
-    if not g_game.isOnline() then
-        return
-    end
-    hotkeysWindow:show()
-    hotkeysWindow:raise()
-    hotkeysWindow:focus()
+    openCustomHotkeys()
 end
 
 function hide()
-    hotkeysWindow:hide()
+    if hotkeysWindow then
+        hotkeysWindow:hide()
+    end
 end
 
 function toggle()
-    if not hotkeysWindow:isVisible() then
-        show()
-    else
-        hide()
+    openCustomHotkeys()
+end
+
+function openCustomHotkeys()
+    if modules.client_options and modules.client_options.showCustomHotkeys then
+        modules.client_options.showCustomHotkeys()
     end
 end
 

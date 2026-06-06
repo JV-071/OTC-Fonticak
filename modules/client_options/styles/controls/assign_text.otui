@@ -1,7 +1,8 @@
-CustomTextWindow < MainWindow
+CustomTextWindow < NewMainWindow
   id: assignTextWindow
   size: 275 148
   text: Assign Text
+  focus-child: text
 
   Panel
     id: contentPanel
@@ -11,7 +12,7 @@ CustomTextWindow < MainWindow
       anchors.top: parent.top
       anchors.left: parent.left
       text: Text:
-      font: cipsoftFont
+      font: Verdana Bold-11px
       color: #c0c0c0
       text-horizontal-auto-resize: true
     TextEdit
@@ -29,6 +30,8 @@ CustomTextWindow < MainWindow
       anchors.right: parent.right
       margin-top: 6
       height: 22
+      image-source: /images/ui/panel_flat_astra
+      image-border: 1
       CheckBox
         id: tick
         anchors.left: parent.left
@@ -36,7 +39,7 @@ CustomTextWindow < MainWindow
         anchors.right: parent.right
         margin-left: 5
         text: Send automatically
-        font: cipsoftFont
+        font: Verdana Bold-11px
         color: #c0c0c0
         checked: false
 

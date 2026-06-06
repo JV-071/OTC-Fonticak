@@ -6,7 +6,7 @@ SpellPreview < UICheckBox
   text-offset: 38 2
   image-source:
   change-cursor-image: false
-  font: cipsoftFont
+  font: Verdana Bold-11px
   color: #c0c0c0
 
   $hover !disabled:
@@ -62,14 +62,15 @@ SpellPreview < UICheckBox
     margin-top: 12
     margin-left: 6
     !text: tr('Level: 0')
-    font: cipsoftFont
+    font: Verdana Bold-11px
     color: #c0c0c0
     text-auto-resize: true
     visible: false
 
-SpellMainWindow < MainWindow
+SpellMainWindow < NewMainWindow
   id: assignSpellWindow
   size: 375 609
+  text: Assign Spell
   @onEscape: self:destroy()
   Panel
     id: contentPanel
@@ -103,7 +104,9 @@ SpellMainWindow < MainWindow
       padding-top: 26
       focusable: false
       vertical-scrollbar: listScrollBar
-      image-source: /images/ui/1pixel_down_frame
+      image-source: /images/ui/panel_flat_astra
+      image-border: 1
+      background-color: #636363
 
     TextEdit
       id: searchText
@@ -116,7 +119,7 @@ SpellMainWindow < MainWindow
       margin-left: 1
       !placeholder: tr('Type to search')
       padding: 2
-      font: cipsoftFont
+      font: Verdana Bold-11px
       placeholder-color: #707070
       @onTextChange:
     Button
@@ -126,10 +129,14 @@ SpellMainWindow < MainWindow
       margin-top: 1
       margin-right: 1
       size: 18 18
-      image-source: /images/ui/erase-button
-      image-clip: 0 0 20 20
+      image-source: /images/store/button-erase-small-up
+      image-clip: 0 0 18 18
       $pressed:
-        image-clip: 0 20 20 20
+        image-source: /images/store/button-erase-small-down
+        image-clip: 0 0 18 18
+      $!hover:
+        image-source: /images/store/button-erase-small-up
+        image-clip: 0 0 18 18
 
     VerticalScrollBar
       id: listScrollBar
@@ -147,6 +154,8 @@ SpellMainWindow < MainWindow
       anchors.left: parent.left
       anchors.right: parent.right
       height: 22
+      image-source: /images/ui/panel_flat_astra
+      image-border: 1
 
       CheckBox
         id: tick
@@ -155,7 +164,7 @@ SpellMainWindow < MainWindow
         anchors.right: parent.right
         margin-left: 5
         text: Only show learnt spells
-        font: cipsoftFont
+        font: Verdana Bold-11px
         color: #c0c0c0
         checked: true
         change-cursor-image: false
@@ -168,7 +177,7 @@ SpellMainWindow < MainWindow
       margin-top: 7
       anchors.left: parent.left
       text: Parameter:
-      font: cipsoftFont
+      font: Verdana Bold-11px
       color: #c0c0c0
       text-auto-resize: true
       text-offset: -2 0

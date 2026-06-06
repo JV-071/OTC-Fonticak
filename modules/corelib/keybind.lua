@@ -692,6 +692,22 @@ function Keybind.isKeyComboUsed(keyCombo, category, action, chatMode)
   return false
 end
 
+function Keybind.saveHotkeys(preset, chatMode)
+  preset = preset or Keybind.currentPreset
+  chatMode = chatMode or Keybind.chatMode
+
+  if not Keybind.hotkeys[chatMode][preset] then
+    Keybind.hotkeys[chatMode][preset] = {}
+  end
+
+  for id, hotkey in ipairs(Keybind.hotkeys[chatMode][preset]) do
+    hotkey.hotkeyId = id
+  end
+
+  Keybind.configs.hotkeys[preset]:setNode(chatMode, Keybind.hotkeys[chatMode][preset])
+  Keybind.configs.hotkeys[preset]:save()
+end
+
 function Keybind.newHotkey(action, data, primary, secondary, chatMode)
   if not chatMode then
     chatMode = Keybind.chatMode
@@ -712,8 +728,7 @@ function Keybind.newHotkey(action, data, primary, secondary, chatMode)
 
   local hotkeyId = #Keybind.hotkeys[chatMode][Keybind.currentPreset]
   hotkey.hotkeyId = hotkeyId
-  Keybind.configs.hotkeys[Keybind.currentPreset]:setNode(chatMode, Keybind.hotkeys[chatMode][Keybind.currentPreset])
-  Keybind.configs.hotkeys[Keybind.currentPreset]:save()
+  Keybind.saveHotkeys(Keybind.currentPreset, chatMode)
 
   Keybind.bindHotkey(hotkeyId, chatMode)
 end
@@ -730,15 +745,7 @@ function Keybind.removeHotkey(hotkeyId, chatMode)
   Keybind.unbindHotkey(hotkeyId, chatMode)
 
   table.remove(Keybind.hotkeys[chatMode][Keybind.currentPreset], hotkeyId)
-
-  Keybind.configs.hotkeys[Keybind.currentPreset]:clear()
-
-  for id, hotkey in ipairs(Keybind.hotkeys[chatMode][Keybind.currentPreset]) do
-    hotkey.hotkeyId = id
-    Keybind.configs.hotkeys[Keybind.currentPreset]:setNode(id, hotkey)
-  end
-
-  Keybind.configs.hotkeys[Keybind.currentPreset]:save()
+  Keybind.saveHotkeys(Keybind.currentPreset, chatMode)
 end
 
 function Keybind.editHotkey(hotkeyId, action, data, chatMode)
@@ -751,8 +758,7 @@ function Keybind.editHotkey(hotkeyId, action, data, chatMode)
   local hotkey = Keybind.hotkeys[chatMode][Keybind.currentPreset][hotkeyId]
   hotkey.action = action
   hotkey.data = data
-  Keybind.configs.hotkeys[Keybind.currentPreset]:setNode(chatMode, Keybind.hotkeys[chatMode][Keybind.currentPreset])
-  Keybind.configs.hotkeys[Keybind.currentPreset]:save()
+  Keybind.saveHotkeys(Keybind.currentPreset, chatMode)
 
   Keybind.bindHotkey(hotkeyId, chatMode)
 end
@@ -767,8 +773,7 @@ function Keybind.editHotkeyKeys(hotkeyId, primary, secondary, chatMode)
   local hotkey = Keybind.hotkeys[chatMode][Keybind.currentPreset][hotkeyId]
   hotkey.primary = primary or ""
   hotkey.secondary = secondary or ""
-  Keybind.configs.hotkeys[Keybind.currentPreset]:setNode(chatMode, Keybind.hotkeys[chatMode][Keybind.currentPreset])
-  Keybind.configs.hotkeys[Keybind.currentPreset]:save()
+  Keybind.saveHotkeys(Keybind.currentPreset, chatMode)
 
   Keybind.bindHotkey(hotkeyId, chatMode)
 end
@@ -779,7 +784,7 @@ function Keybind.removeAllHotkeys(chatMode)
   end
 
   for _, hotkey in ipairs(Keybind.hotkeys[chatMode][Keybind.currentPreset]) do
-    Keybind.unbindHotkey(hotkey.hotkeyId)
+    Keybind.unbindHotkey(hotkey.hotkeyId, chatMode)
   end
 
   Keybind.hotkeys[chatMode][Keybind.currentPreset] = {}

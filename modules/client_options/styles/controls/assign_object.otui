@@ -3,7 +3,7 @@ SmartMode < CheckBox
   text: Smart mode
   margin-top: 6
   margin-left: 32
-  font: cipsoftFont
+  font: Verdana Bold-11px
   color: #c0c0c0
   text-offset: 13 -3
 
@@ -17,9 +17,10 @@ RoundCheckBox < CheckBox
   $!first:
     margin-top: 5
 
-CustomObjectWindow < MainWindow
+CustomObjectWindow < NewMainWindow
   id: assignItemWindow
   size: 275 198
+  text: Assign Object
   Panel
     id: contentPanel
     anchors.fill: parent
@@ -30,13 +31,11 @@ CustomObjectWindow < MainWindow
       size: 86 86
       anchors.top: parent.top
       anchors.left: parent.left
-      image-source: /images/ui/panel_flat
+      image-source: /images/ui/panel_flat_astra
     UIItem
       id: item
       size: 64 64
-      anchors.top: prev.top
-      anchors.horizontalCenter: prev.horizontalCenter
-      margin-top: 10
+      anchors.centerIn: prev
       &selectable: true
       &editable: false
       priceable: false
@@ -63,7 +62,7 @@ CustomObjectWindow < MainWindow
         id: UseOnYourself
         text: Use on yourself
         enabled: false
-        font: cipsoftFont
+        font: Verdana Bold-11px
         color: #c0c0c0
         change-cursor-image: false
         $hover !disabled:
@@ -73,7 +72,7 @@ CustomObjectWindow < MainWindow
       RoundCheckBox
         id: UseOnTarget
         text: Use on target
-        font: cipsoftFont
+        font: Verdana Bold-11px
         color: #c0c0c0
         enabled: false
         change-cursor-image: false
@@ -84,7 +83,7 @@ CustomObjectWindow < MainWindow
       RoundCheckBox
         id: SmartCast
         text: Use on cursor location
-        font: cipsoftFont
+        font: Verdana Bold-11px
         color: #c0c0c0
         text-auto-resize: true
         enabled: false
@@ -97,7 +96,7 @@ CustomObjectWindow < MainWindow
         id: SelectUseTarget
         text: With crosshair
         enabled: false
-        font: cipsoftFont
+        font: Verdana Bold-11px
         color: #c0c0c0
         change-cursor-image: false
         $hover !disabled:
@@ -108,7 +107,7 @@ CustomObjectWindow < MainWindow
         id: Equip
         text: Equip/Unequip
         enabled: false
-        font: cipsoftFont
+        font: Verdana Bold-11px
         color: #c0c0c0
         change-cursor-image: false
         $hover !disabled:
@@ -126,7 +125,7 @@ CustomObjectWindow < MainWindow
         id: Use
         text: Use
         enabled: false
-        font: cipsoftFont
+        font: Verdana Bold-11px
         color: #c0c0c0
         change-cursor-image: false
         $hover !disabled:

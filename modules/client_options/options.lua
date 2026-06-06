@@ -483,6 +483,34 @@ function show()
     controller.ui:focus()
 end
 
+function showCustomHotkeys()
+    if not controller or not controller.ui then
+        return
+    end
+
+    show()
+
+    scheduleEvent(function()
+        local controlsCategory = controller.ui.optionsTabBar:getChildByIndex(1)
+        if controlsCategory and controlsCategory.Button then
+            controlsCategory.Button:onClick()
+            local customHotkeysCategory = controlsCategory:getChildById(2)
+            if customHotkeysCategory and customHotkeysCategory.Button then
+                customHotkeysCategory.Button:onClick()
+            end
+        elseif panels.customHotkeys then
+            if controller.ui.selectedOption then
+                controller.ui.selectedOption:hide()
+            end
+            panels.customHotkeys:show()
+            panels.customHotkeys:setVisible(true)
+            controller.ui.selectedOption = panels.customHotkeys
+        end
+
+        updateCustomHotkeys()
+    end, 1)
+end
+
 function hide()
     -- Save all settings when closing the options window
     g_settings.save()
