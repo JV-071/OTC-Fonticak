@@ -6,23 +6,38 @@ Cursors
     image: default_window
     hot-spot: 0 0
   walk:
-    image: walkcursor
+    image: cursor-walk
     hot-spot: 0 0
   talk:
-    image: talkcursor
+    image: cursor-talk
+    hot-spot: 0 0
+  attacker:
+    image: cursor-attack
     hot-spot: 0 0
   attack:
-    image: attackcursor
-    hot-spot: 0 0	  
+    image: cursor-attack
+    hot-spot: 0 0
+  look:
+    image: cursor-look
+    hot-spot: 0 0
+  open:
+    image: cursor-open
+    hot-spot: 0 0
+  quickloot:
+    image: cursor-quick-loot
+    hot-spot: 0 0
+  use:
+    image: cursor-use
+    hot-spot: 0 0
   quicklootcursor:
-    image: quicklootcursor
-    hot-spot: 0 0  
+    image: cursor-quick-loot
+    hot-spot: 0 0
   containercursor:
-    image: containercursor
+    image: cursor-open
     hot-spot: 0 0
   lookcursor:
-    image: lookcursor
-    hot-spot: 0 0	
+    image: cursor-look
+    hot-spot: 0 0
   target:
     image: targetcursor
     hot-spot: 9 9
@@ -39,5 +54,5 @@ Cursors
     image: pointerbutton
     hot-spot: 5 0
   pointinghand:
-    image: pointinghand
-    hot-spot: 5 0           
+    image: cursor-use
+    hot-spot: 0 0

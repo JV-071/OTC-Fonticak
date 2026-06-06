@@ -960,6 +960,8 @@ void WIN32Window::restoreMouseCursor()
     g_mainDispatcher.addEvent([this] {
         if (m_cursor) {
             m_cursor = nullptr;
+            m_currentCursorId = -1;
+            m_cursorFrame = 0;
             SetCursor(m_defaultCursor);
             ShowCursor(true);
         }
@@ -1003,6 +1005,8 @@ void WIN32Window::setSystemCursor(const std::string& cursorName)
         
         const HCURSOR systemCursor = LoadCursor(nullptr, cursorId);
         if (systemCursor) {
+            m_currentCursorId = -1;
+            m_cursorFrame = 0;
             m_cursor = systemCursor;
             SetCursor(systemCursor);
             ShowCursor(true);

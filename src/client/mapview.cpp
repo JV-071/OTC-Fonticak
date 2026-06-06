@@ -43,6 +43,27 @@
 #include "framework/graphics/texturemanager.h"
 #include <framework/platform/platformwindow.h>
 
+#include <initializer_list>
+
+namespace
+{
+int getFirstCursorId(std::initializer_list<const char*> names)
+{
+    for (const char* name : names) {
+        const int cursorId = g_mouse.getCursorId(name);
+        if (cursorId != -1)
+            return cursorId;
+    }
+
+    return -1;
+}
+
+bool isLookCursorThing(const ThingPtr& thing, const TilePtr& tile)
+{
+    return thing && thing != tile->getGround() && !thing->isCreature();
+}
+}
+
 MapView::MapView() : m_lightView(std::make_unique<LightView>(Size())), m_pool(g_drawPool.get(DrawPoolType::MAP))
 {
     m_floors.resize(g_gameConfig.getMapMaxZ() + 1);
@@ -582,7 +603,7 @@ void MapView::onMouseMove(const Position& mousePos, const bool /*isVirtualMove*/
             if (const auto& tile = getTopTile(mousePos)) {
                 if (const auto& creature = tile->getTopCreature(true)) {
                     if (creature->isMonster()) {
-                        int id = g_mouse.getCursorId("attack");
+                        int id = getFirstCursorId({ "attacker", "attack" });
                         if (id != -1) {
                             g_window.setMouseCursor(id);
                             cursorSet = true;
@@ -596,16 +617,22 @@ void MapView::onMouseMove(const Position& mousePos, const bool /*isVirtualMove*/
                     }
                 }
                 
+                const auto& useThing = tile->getTopUseThing();
+                const auto& lookThing = tile->getTopLookThing();
+
                 if (!cursorSet) {
-                    if (const auto& thing = tile->getTopUseThing()) {
+                    if (const auto& thing = useThing) {
                         // Check for both containers and corpses (corpses might not always be containers)
-                        if (thing->isContainer() || thing->isLyingCorpse()) {
+                        if (thing->getDefaultAction() == PLAYER_ACTION_OPEN || thing->isContainer() || thing->isLyingCorpse()) {
                             // Use quicklootcursor for dead creatures when quickloot is active
                             const bool isDeadCreature = thing->isLyingCorpse();
                             const bool quickLootActive = g_game.getFeature(Otc::GameThingQuickLoot);
-                            const char* cursorName = (isDeadCreature && quickLootActive) ? "quicklootcursor" : "containercursor";
+                            int id = -1;
+                            if (isDeadCreature && quickLootActive)
+                                id = getFirstCursorId({ "quickloot", "quicklootcursor" });
+                            else
+                                id = getFirstCursorId({ "open", "containercursor" });
                             
-                            int id = g_mouse.getCursorId(cursorName);
                             if (id != -1) {
                                 g_window.setMouseCursor(id);
                                 cursorSet = true;
@@ -615,14 +642,22 @@ void MapView::onMouseMove(const Position& mousePos, const bool /*isVirtualMove*/
                 }
 
                 if (!cursorSet) {
-                    if (const auto& thing = tile->getTopUseThing()) {
-                        if (thing->isUsable()) {
-                            int id = g_mouse.getCursorId("pointinghand");
+                    if (const auto& thing = useThing) {
+                        if (thing->getDefaultAction() == PLAYER_ACTION_USE || thing->isUsable() || thing->isMultiUse() || thing->isForceUse()) {
+                            int id = getFirstCursorId({ "use", "pointinghand" });
                             if (id != -1) {
                                 g_window.setMouseCursor(id);
                                 cursorSet = true;
                             }
                         }
+                    }
+                }
+
+                if (!cursorSet && ((useThing && useThing->getDefaultAction() == PLAYER_ACTION_LOOK) || isLookCursorThing(lookThing, tile))) {
+                    int id = getFirstCursorId({ "look", "lookcursor" });
+                    if (id != -1) {
+                        g_window.setMouseCursor(id);
+                        cursorSet = true;
                     }
                 }
 
