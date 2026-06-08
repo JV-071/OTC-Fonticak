@@ -1304,6 +1304,8 @@ function updateBestiaryTracker(msg)
 			raceId = raceId,
 			outfit = raceOutfit,
 			kills = msg:getU32(),
+			firstUnlock = msg:getU16(),
+			secondUnlock = msg:getU16(),
 			toKill = msg:getU16(),
 			progress = msg:getU8()
 		}

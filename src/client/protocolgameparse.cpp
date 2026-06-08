@@ -4505,13 +4505,38 @@ void ProtocolGame::parseLootContainers(const InputMessagePtr& msg)
     const uint8_t containersCount = msg->getU8();
     std::vector<std::tuple<uint8_t, uint16_t, uint16_t>> lootList;
 
+    if (g_game.getClientVersion() < 1332) {
+        for (auto i = 0; i < containersCount; ++i) {
+            const uint8_t categoryType = msg->getU8();
+            const uint16_t lootContainerId = msg->getU16();
+            lootList.emplace_back(categoryType, 0, lootContainerId);
+        }
+
+        if (msg->getUnreadSize() > 0) {
+            const uint8_t obtainerContainersCount = msg->getU8();
+            for (auto i = 0; i < obtainerContainersCount; ++i) {
+                const uint8_t categoryType = msg->getU8();
+                const uint16_t obtainerContainerId = msg->getU16();
+                auto it = std::find_if(lootList.begin(), lootList.end(), [categoryType](const auto& entry) {
+                    return std::get<0>(entry) == categoryType;
+                });
+
+                if (it != lootList.end()) {
+                    std::get<1>(*it) = obtainerContainerId;
+                } else {
+                    lootList.emplace_back(categoryType, obtainerContainerId, 0);
+                }
+            }
+        }
+
+        g_lua.callGlobalField("g_game", "onQuickLootContainers", quickLootFallbackToMainContainer, lootList);
+        return;
+    }
+
     for (auto i = 0; i < containersCount; ++i) {
         const uint8_t categoryType = msg->getU8();
         const uint16_t lootContainerId = msg->getU16();
-        uint16_t obtainerContainerId = 0;
-        if (g_game.getClientVersion() >= 1332) {
-            obtainerContainerId = msg->getU16();
-        }
+        const uint16_t obtainerContainerId = msg->getU16();
 
         lootList.emplace_back(categoryType, lootContainerId, obtainerContainerId);
     }
