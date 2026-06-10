@@ -23,6 +23,7 @@
 #pragma once
 
 #include "player.h"
+#include <framework/core/clock.h>
 
  // @bindclass
 class LocalPlayer final : public Player

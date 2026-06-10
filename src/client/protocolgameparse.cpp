@@ -23,6 +23,7 @@
 #include "animatedtext.h"
 #include "attachedeffect.h"
 #include "attachedeffectmanager.h"
+#include "client.h"
 #include "effect.h"
 #include "game.h"
 #include "gameconfig.h"

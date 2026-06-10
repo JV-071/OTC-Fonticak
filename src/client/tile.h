@@ -25,6 +25,7 @@
 #include <framework/luaengine/luaobject.h>
 
 #include "attachableobject.h"
+#include "creature.h"
 #include "declarations.h"
 #include "staticdata.h"
 #include "statictext.h"
