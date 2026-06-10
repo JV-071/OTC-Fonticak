@@ -7,7 +7,19 @@ BUILD_LOG=${BUILD_LOG:-docker-browser-build.log}
 OUTPUT_DIR=${OUTPUT_DIR:-build-emscripten-web}
 : > "${BUILD_LOG}"
 rm -rf "${OUTPUT_DIR}"
-docker build --progress=plain -t otclient-web -f Dockerfile.browser . 2>&1 | tee -a "${BUILD_LOG}"
+
+for attempt in 1 2 3; do
+  if docker build --progress=plain -t otclient-web -f Dockerfile.browser . 2>&1 | tee -a "${BUILD_LOG}"; then
+    break
+  fi
+
+  if [[ "${attempt}" == "3" ]]; then
+    exit 1
+  fi
+
+  sleep $((attempt * 20))
+done
+
 docker rm -f otclient-web-tmp >/dev/null 2>&1 || true
 docker create --name otclient-web-tmp otclient-web:latest
 docker cp otclient-web-tmp:/otclient-web "${OUTPUT_DIR}"

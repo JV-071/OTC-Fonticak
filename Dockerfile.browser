@@ -70,8 +70,9 @@ RUN source /opt/emsdk/emsdk_env.sh \
     -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
  && cmake --build ${BUILD_DIR} --target otclient -j"$(nproc)"
 
-# NOSONAR: minimal BusyBox stage used only to package static artifacts, root default is acceptable
-FROM busybox:latest AS web-artifacts
+# The artifact stage only needs a filesystem snapshot for `docker cp`.
+# Use scratch so the browser build does not depend on pulling a second base image.
+FROM scratch AS web-artifacts
 WORKDIR /otclient-web
 COPY --from=builder /workspace/build-emscripten/bin/ .
-CMD ["sh"]
+CMD ["true"]
