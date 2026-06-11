@@ -289,6 +289,13 @@ function init_custom_hotkeys()
   panels.customHotkeys.buttons.newAction.onClick = newCustomHotkeyAction
   panels.customHotkeys.buttons.reset.onClick = resetCustomHotkeys
 
+  panels.customHotkeys.tablePanel.keybindsData.onMouseRelease = function(widget, pos, button)
+    if button == MouseRightButton then
+      newCustomHotkeyAction()
+      return true
+    end
+  end
+
   panels.customHotkeys.search.field.onTextChange = searchCustomHotkeys
   panels.customHotkeys.search.clear.onClick = function()
     panels.customHotkeys.search.field:clearText()
@@ -428,6 +435,12 @@ function addCustomHotkeyRow(hotkeyId, action, data, primary, secondary)
   end
 
   actionCol.edit.onClick = function() editCustomHotkeyAction(row) end
+  actionCol.onMouseRelease = function(widget, pos, button)
+    if button == MouseRightButton then
+      editCustomHotkeyAction(row)
+      return true
+    end
+  end
   row:getChildByIndex(3).edit.onClick = function() editCustomHotkeyPrimary(row) end
   row:getChildByIndex(5).edit.onClick = function() editCustomHotkeySecondary(row) end
 end
