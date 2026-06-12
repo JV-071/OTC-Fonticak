@@ -416,17 +416,8 @@ function controller:onGameStart()
             end
         end
     end
-    if not g_game.getFeature(GameEffectSource) then
-        panels.graphicsEffectsPanel.clientEffectOpacity:show()
-        panels.graphicsEffectsPanel.clientMissileOpacity:show()
-        panels.graphicsEffectsPanel.GameEffectSource:hide()
-    else
-        g_client.setEffectAlpha(1)
-        g_client.setMissileAlpha(1)
-        panels.graphicsEffectsPanel.clientEffectOpacity:hide()
-        panels.graphicsEffectsPanel.clientMissileOpacity:hide()
-        panels.graphicsEffectsPanel.GameEffectSource:show()
-    end
+    -- bloco GameEffectSource do upstream removido: a UI de opções do Fonticak
+    -- não tem os widgets clientEffectOpacity/clientMissileOpacity/GameEffectSource.
 end
 
 function setOption(key, value, force)

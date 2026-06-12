@@ -4,9 +4,10 @@
 -- 0xEB, proficiency 0x5A/0x5B, party analyzer 0x2B). Aqui ficam só os pacotes
 -- que o engine não cobre.
 
--- 0x2F: "custom unjustified points" (Lua do servidor, OTC-only). Formato:
--- 6x u8 + skullTime u32 + 2x u8. O nativo (opcode 183) usa outro formato.
-local CUSTOM_UNJUSTIFIED_OPCODE = 0x2F
+-- 0x2F (custom unjustified points): JÁ tratado pelo Fonticak em
+-- modules/game_market/market_protocol_custom.lua (skipBytes(12), mesmo
+-- formato 6x u8 + u32 + 2x u8) — registrar de novo dá "opcode already
+-- registered" e derruba o módulo.
 
 -- 0x8C (extended): ícones de condição de 64 bits (Player::sendIcons manda
 -- u64 little-endian com os bits >= 16: Hex, Rooted, Feared, Goshnar, Agony...).
@@ -56,21 +57,7 @@ local function parseSpecialSkillActivated(protocol, msg)
     msg:getU8() -- skillId
 end
 
-local function parseCustomUnjustifiedStats(protocol, msg)
-    msg:getU8() -- killsDay
-    msg:getU8() -- killsDayRemaining
-    msg:getU8() -- killsWeek
-    msg:getU8() -- killsWeekRemaining
-    msg:getU8() -- killsMonth
-    msg:getU8() -- killsMonthRemaining
-    msg:getU32() -- skullTime
-    msg:getU8() -- openPvpSituations
-    msg:getU8() -- skull (já atualizado pelos pacotes de criatura)
-    -- TODO: repassar para a UI de unjustified points.
-end
-
 function init()
-    ProtocolGame.registerOpcode(CUSTOM_UNJUSTIFIED_OPCODE, parseCustomUnjustifiedStats)
     ProtocolGame.registerOpcode(CHARM_ACTIVATED_OPCODE, parseCharmActivated)
     ProtocolGame.registerOpcode(IMBUEMENT_ACTIVATED_OPCODE, parseImbuementActivated)
     ProtocolGame.registerOpcode(SPECIAL_SKILL_ACTIVATED_OPCODE, parseSpecialSkillActivated)
@@ -82,5 +69,4 @@ function terminate()
     ProtocolGame.unregisterOpcode(SPECIAL_SKILL_ACTIVATED_OPCODE)
     ProtocolGame.unregisterOpcode(IMBUEMENT_ACTIVATED_OPCODE)
     ProtocolGame.unregisterOpcode(CHARM_ACTIVATED_OPCODE)
-    ProtocolGame.unregisterOpcode(CUSTOM_UNJUSTIFIED_OPCODE)
 end
