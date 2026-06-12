@@ -2,6 +2,15 @@ local onBattlePassMessage
 local online
 local offline
 local openBattlePass
+-- Botão no painel direito: o AstraClient novo abre o Battle Pass pelo
+-- game_sidebuttons, que o Fonticak não tem; aqui usamos o game_mainpanel.
+local battlePassMainButton = nil
+
+local function setBattlePassMainButtonOn(state)
+    if battlePassMainButton and battlePassMainButton.setOn then
+        battlePassMainButton:setOn(state)
+    end
+end
 local onCreateRewardContainers
 local onResourceBalance
 local toggleNextWindow
@@ -369,6 +378,17 @@ function BattlePass.init()
     BattlePass.loadMenu('challengesMenu')
     onCreateRewardContainers()
 
+    if modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
+        battlePassMainButton = modules.game_mainpanel.addToggleButton(
+            'battlePassButton',
+            tr('Battle Pass'),
+            '/images/game/battlepass/mainIcon1',
+            openBattlePass,
+            false,
+            1007
+        )
+    end
+
     registerBattlePassProtocol()
 
     connect(g_game, {
@@ -385,6 +405,11 @@ function BattlePass.init()
 end
 
 function BattlePass.terminate()
+    if battlePassMainButton and not battlePassMainButton:isDestroyed() then
+        battlePassMainButton:destroy()
+    end
+    battlePassMainButton = nil
+
     stopUnlockTimer()
 
     g_keyboard.unbindKeyPress('Tab', toggleNextWindow, BattlePass.window)
@@ -677,6 +702,7 @@ function BattlePass.show()
     g_keyboard.unbindKeyPress('Tab', toggleNextWindow, BattlePass.window)
     g_keyboard.bindKeyPress('Tab', toggleNextWindow, BattlePass.window)
     updateGoldBalance()
+    setBattlePassMainButtonOn(true)
 end
 
 function BattlePass.hide()
@@ -688,6 +714,7 @@ function BattlePass.hide()
     g_keyboard.unbindKeyPress('Tab', toggleNextWindow, BattlePass.window)
     stopUnlockTimer()
     stopPendingRewardsSchedule()
+    setBattlePassMainButtonOn(false)
 end
 
 onCreateRewardContainers = function()
