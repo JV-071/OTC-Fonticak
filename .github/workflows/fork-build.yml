@@ -79,10 +79,6 @@ jobs:
     name: Compile (CMake Release)
     runs-on: windows-2025
     env:
-      # Cache binário do vcpkg em pasta + actions/cache (padrão do AstraClient):
-      # o save roda mesmo em falha, então as deps sobrevivem a erro de compile.
-      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
-      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg_cache,readwrite"
       SCCACHE_DIR: ${{ github.workspace }}\.sccache
     steps:
       - name: Checkout repository
@@ -98,14 +94,14 @@ jobs:
         shell: pwsh
         run: Remove-Item -Recurse -Force C:\mysql* -ErrorAction SilentlyContinue
 
-      - name: Create vcpkg binary cache directory
-        shell: pwsh
-        run: New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/vcpkg_cache" | Out-Null
-
+      # O CMakePresets.json passa --binarysource=files,$VCPKG_ROOT/binary-cache
+      # na linha de comando do vcpkg (sobrepõe env vars) — o cache TEM que
+      # apontar para essa pasta. O save roda mesmo em falha, então as deps
+      # sobrevivem a erro de compile.
       - name: Restore vcpkg binary cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/vcpkg_cache
+          path: ${{ github.workspace }}/vcpkg/binary-cache
           key: vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
           restore-keys: |
             vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-
@@ -143,7 +139,7 @@ jobs:
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ${{ github.workspace }}/vcpkg_cache
+          path: ${{ github.workspace }}/vcpkg/binary-cache
           key: vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
 
       - name: Upload artifacts

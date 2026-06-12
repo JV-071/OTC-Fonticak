@@ -7433,18 +7433,6 @@ void ProtocolGame::parseWeaponProficiencyInfoBatch(const InputMessagePtr& msg)
     for (uint16_t i = 0; i < count; ++i) {
         parseWeaponProficiencyInfoPayload(msg);
     }
-    constexpr uint16_t MarketCategoryWeaponsAll = 32;
-    uint16_t marketCategory = MarketCategoryWeaponsAll;
-    if (g_things.isValidDatId(itemId, ThingCategoryItem)) {
-        const auto& itemType = g_things.getThingType(itemId, ThingCategoryItem);
-        if (itemType) {
-            const auto& marketData = itemType->getMarketData();
-            if (!marketData.name.empty()) {
-                marketCategory = marketData.category;
-            }
-        }
-    }
-    g_lua.callGlobalField("g_game", "onWeaponProficiency", itemId, experience, perks, marketCategory);
 }
 
 // 0x5F - parse destiny wheel window
