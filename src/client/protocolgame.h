@@ -193,10 +193,6 @@ public:
     void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,uint16_t greenGem,uint16_t redGem,uint16_t acquaGem,uint16_t purpleGem);
     void sendWheelGemAction(const uint8_t actionType, const uint8_t param, const uint8_t pos);
 
-    // Weapon Proficiency
-    void sendWeaponProficiencyAction(uint8_t actionType, uint16_t itemId = 0);
-    void sendWeaponProficiencyApply(uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions);
-    
     // otclient only
     void sendChangeMapAwareRange(uint8_t xrange, uint8_t yrange);
 
