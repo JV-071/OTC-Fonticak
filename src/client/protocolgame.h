@@ -189,6 +189,8 @@ public:
     void sendInspectCharacter(uint32_t creatureId, uint8_t tab);
 
     // Wheel of Destiny
+    void sendOpenWheelOfDestiny(uint32_t playerId);
+    void sendApplyWheelOfDestiny(const std::vector<uint16_t>& wheelPointsVec, const std::vector<uint16_t>& activeGemsVec);
     void sendOpenWheel(uint32_t playerId);
     void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,uint16_t greenGem,uint16_t redGem,uint16_t acquaGem,uint16_t purpleGem);
     void sendWheelGemAction(const uint8_t actionType, const uint8_t param, const uint8_t pos);
