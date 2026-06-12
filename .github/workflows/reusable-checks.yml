@@ -22,6 +22,11 @@ jobs:
 
       - name: Setup dependencies
         run: |
+          # Repos da Microsoft pré-instalados no runner caem com 403 esporádico
+          # e derrubam o apt-get update; não usamos nada deles aqui.
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+            /etc/apt/sources.list.d/azure-cli.sources \
+            /etc/apt/sources.list.d/azure-cli.list
           sudo apt-get update
           sudo apt-get install -y cppcheck libxml2-utils lua-check luajit yamllint
 
