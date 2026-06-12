@@ -1,7 +1,7 @@
 ## Workflow do fork (JV-071).
 ## - Em todo push: builda o Windows CMake Release (o artefato do dia a dia),
-##   rápido graças ao cache binário do vcpkg (NuGet/GitHub Packages, secret
-##   VCPKG_PACKAGES_TOKEN) + sccache.
+##   rápido graças ao cache binário do vcpkg em pasta (files + actions/cache,
+##   mesmo padrão do AstraClient) + sccache.
 ## - Em workflow_dispatch ou push na main: builda também todas as outras
 ##   plataformas (Linux, macOS, Android, Browser, Docker) reaproveitando os
 ##   reusables do upstream, que já têm cache próprio por plataforma.
@@ -79,20 +79,14 @@ jobs:
     name: Compile (CMake Release)
     runs-on: windows-2025
     env:
-      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,${{ secrets.VCPKG_PACKAGES_TOKEN != '' && 'readwrite' || 'read' }};nugettimeout,600"
-      VCPKG_NUGET_REPOSITORY: https://github.com/${{ github.repository }}.git
-      VCPKG_NUGET_API_KEY: ${{ secrets.VCPKG_PACKAGES_TOKEN != '' && secrets.VCPKG_PACKAGES_TOKEN || github.token }}
+      # Cache binário do vcpkg em pasta + actions/cache (padrão do AstraClient):
+      # o save roda mesmo em falha, então as deps sobrevivem a erro de compile.
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg_cache,readwrite"
       SCCACHE_DIR: ${{ github.workspace }}\.sccache
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v9
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: Get vcpkg baseline
         shell: pwsh
@@ -103,6 +97,19 @@ jobs:
       - name: Remove Windows pre-installed MySQL
         shell: pwsh
         run: Remove-Item -Recurse -Force C:\mysql* -ErrorAction SilentlyContinue
+
+      - name: Create vcpkg binary cache directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/vcpkg_cache" | Out-Null
+
+      - name: Restore vcpkg binary cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg_cache
+          key: vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-bincache-windows-
 
       - name: Prepare sccache directory
         shell: pwsh
@@ -117,20 +124,6 @@ jobs:
           restore-keys: |
             ccache-windows
 
-      - name: Setup NuGet source for GitHub Packages
-        shell: pwsh
-        env:
-          NUGET_AUTH_TOKEN: ${{ env.VCPKG_NUGET_API_KEY }}
-        run: |
-          $feed = "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-          $nuget = (Get-Command nuget.exe -ErrorAction SilentlyContinue).Source
-          if (-not $nuget) { throw "nuget.exe not found in PATH" }
-          & $nuget sources remove -Name "GitHubPackages" 2>&1 | Out-Null
-          & $nuget sources add -Name "GitHubPackages" -Source $feed `
-            -UserName "${{ github.repository_owner }}" -Password "$env:NUGET_AUTH_TOKEN" `
-            -StorePasswordInClearText
-          & $nuget setapikey "$env:NUGET_AUTH_TOKEN" -Source $feed
-
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
@@ -143,6 +136,15 @@ jobs:
           configurePreset: windows-release
           buildPreset: windows-release
           configurePresetAdditionalArgs: "['-DTOGGLE_BIN_FOLDER=ON', '-DOPTIONS_ENABLE_IPO=OFF', '-DOTCLIENT_BUILD_TESTS=OFF']"
+
+      # Salva mesmo em falha: as deps compilam antes de qualquer erro no código,
+      # então a próxima run as restaura e pula direto pro compile.
+      - name: Save vcpkg binary cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg_cache
+          key: vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
