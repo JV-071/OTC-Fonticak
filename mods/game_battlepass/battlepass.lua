@@ -600,6 +600,12 @@ local function parseBattlePassMissions(msg)
 end
 
 onBattlePassMessage = function(protocol, msg)
+    -- Self-heal: o signalcall do corelib para a cadeia se um slot anterior de
+    -- onGameStart retornar truthy — e este mod, carregado por último (mods/),
+    -- é o primeiro a morrer de fome. Se chegou mensagem, estamos online.
+    if not BattlePass.onlineRan then
+        online()
+    end
     local ok, err = pcall(function()
         local response = msg:getU8()
         if response == BattlePassResponse.Missions then
@@ -617,6 +623,7 @@ onBattlePassMessage = function(protocol, msg)
 end
 
 online = function()
+    BattlePass.onlineRan = true
     registerBattlePassProtocol()
 
     -- Load battlepass config
@@ -664,6 +671,7 @@ function BattlePass.onBattlePassBarClick()
 end
 
 offline = function()
+    BattlePass.onlineRan = false
     unregisterBattlePassProtocol()
 
     BattlePass.hide()
