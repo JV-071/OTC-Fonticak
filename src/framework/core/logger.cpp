@@ -109,7 +109,9 @@ namespace
 
             auto logger = std::make_shared<spdlog::logger>("otclient", sink);
             logger->set_level(spdlog::level::trace);
-            logger->flush_on(spdlog::level::warn);
+            // flush em info: com warn, sessões sem warning deixavam o
+            // otclient.log vazio (só era escrito no flush ou na saída limpa)
+            logger->flush_on(spdlog::level::info);
             spdlog::set_default_logger(logger);
 
             return logger;
