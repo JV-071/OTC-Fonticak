@@ -30,6 +30,9 @@
 
 #ifdef _MSC_VER
 
+// ImageHlp.h precisa dos tipos base do Windows (sem PCH ninguém os incluiu antes)
+#include <windows.h>
+
 #pragma warning (push)
 #pragma warning (disable:4091) // warning C4091: 'typedef ': ignored on left of '' when no variable is declared
 #include <ImageHlp.h>

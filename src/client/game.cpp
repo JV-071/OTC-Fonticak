@@ -23,6 +23,7 @@
 #include "game.h"
 
 #include "attachedeffect.h"
+#include "client.h"
 #include "container.h"
 #include "gameconfig.h"
 #include "item.h"
