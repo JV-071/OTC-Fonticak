@@ -1,12 +1,7 @@
-local battlePassBarWidget = nil
-local battlePassMainButton = nil
-
-local onBattlePassExtendedOpcode
+local onBattlePassMessage
 local online
 local offline
 local openBattlePass
-local createBattlePassBarWidget
-local destroyBattlePassBarWidget
 local onCreateRewardContainers
 local onResourceBalance
 local toggleNextWindow
@@ -45,11 +40,27 @@ if not BattlePass then
     BattlePass.rewardMaxMargin = 18045
 end
 
--- Extended Opcode para comunicacao com Crystal Server
-BATTLEPASS_OPCODE_DEFAULT = BATTLEPASS_OPCODE_DEFAULT or 225
+local BattlePassOpcode = {
+    Request = 0x36,
+    Send = 0x37
+}
 
-local BATTLEPASS_OPCODE = BATTLEPASS_OPCODE_DEFAULT
-BattlePass.opcode = BATTLEPASS_OPCODE
+local BattlePassRequest = {
+    GetMissions = 1,
+    GetRewards = 2,
+    Reroll = 3,
+    Redeem = 4,
+    BuyPremium = 5
+}
+
+local BattlePassResponse = {
+    Missions = 1,
+    Rewards = 2,
+    Error = 3
+}
+
+local battlePassProtocolRegistered = false
+BattlePass.opcode = BattlePassOpcode.Request
 
 -- Redemption não tem o LoadedPlayer do Astra; a chave do cache local vem do
 -- nome do personagem logado.
@@ -73,43 +84,6 @@ end
 
 local function getRewardPosition(step)
     return RewardPositions[step] or RewardPositions[0]
-end
-
-local function getBattlePassSidePanel()
-    if not modules.game_interface then
-        return nil
-    end
-
-    if modules.game_interface.getMainRightPanel then
-        local panel = modules.game_interface.getMainRightPanel()
-        if panel then
-            return panel
-        end
-    end
-
-    if modules.game_interface.getRightPanel then
-        return modules.game_interface.getRightPanel()
-    end
-
-    return nil
-end
-
-local function fitBattlePassSidePanel(panel)
-    if not panel then
-        return
-    end
-
-    if panel.fitAllChildren then
-        panel:fitAllChildren()
-    elseif panel.fitAll then
-        panel:fitAll()
-    end
-end
-
-local function setBattlePassMainButtonOn(state)
-    if battlePassMainButton and battlePassMainButton.setOn then
-        battlePassMainButton:setOn(state)
-    end
 end
 
 local function stopUnlockTimer()
@@ -150,15 +124,52 @@ local function updateGoldBalance()
     goldCoinsLabel:setTooltip(moneyTooltip)
 end
 
-local function sendToServer(action, data)
+local function sendBattlePassMessage(msg)
     local protocol = g_game.getProtocolGame()
-    if protocol then
-        protocol:sendExtendedOpcode(BATTLEPASS_OPCODE, json.encode({
-            action = action,
-            data = data or {},
-        }))
+    if not protocol then
+        return false
     end
+
+    protocol:send(msg)
+    return true
 end
+
+local function sendToServer(action, data)
+    data = type(data) == "table" and data or {}
+
+    local request = nil
+    if action == "getMissions" then
+        request = BattlePassRequest.GetMissions
+    elseif action == "getRewards" then
+        request = BattlePassRequest.GetRewards
+    elseif action == "reroll" then
+        request = BattlePassRequest.Reroll
+    elseif action == "redeem" then
+        request = BattlePassRequest.Redeem
+    elseif action == "buyPremium" or action == "buyDeluxe" or action == "purchasePremium" then
+        request = BattlePassRequest.BuyPremium
+    end
+
+    if not request then
+        return false
+    end
+
+    local msg = OutputMessage.create()
+    msg:addU8(BattlePassOpcode.Request)
+    msg:addU8(request)
+
+    if request == BattlePassRequest.Reroll then
+        msg:addString(tostring(data.missionId or ""))
+    elseif request == BattlePassRequest.Redeem then
+        msg:addU16(tonumber(data.index) or 0)
+        msg:addU32(tonumber(data.rewardId) or 0)
+        msg:addU32(math.max(0, tonumber(data.objectId) or 0))
+    end
+
+    return sendBattlePassMessage(msg)
+end
+
+BattlePass.sendToServer = sendToServer
 
 local function setOutfitStaticWalking(enabled)
     local widget = BattlePass.outfitWidget
@@ -166,10 +177,10 @@ local function setOutfitStaticWalking(enabled)
         return
     end
 
-    -- No Redemption setStaticWalking fica na Creature e recebe a velocidade
-    -- da animação em ms (0 = parar), não um boolean como no Astra.
     local creature = widget.getCreature and widget:getCreature()
     if creature and creature.setStaticWalking then
+        -- No Redemption setStaticWalking fica na Creature e recebe a velocidade
+        -- da animação em ms (0 = parar), não um boolean como no Astra.
         creature:setStaticWalking(enabled and 150 or 0)
     end
 end
@@ -296,9 +307,26 @@ function BattlePass.redirectToStore()
     g_game.openStore(0, "")
 end
 
-function BattlePass.init()
-    g_ui.importStyle('styles/battlepass_button')
+local function registerBattlePassProtocol()
+    if battlePassProtocolRegistered then
+        return
+    end
 
+    ProtocolGame.unregisterOpcode(BattlePassOpcode.Send)
+    ProtocolGame.registerOpcode(BattlePassOpcode.Send, onBattlePassMessage)
+    battlePassProtocolRegistered = true
+end
+
+local function unregisterBattlePassProtocol()
+    if not battlePassProtocolRegistered then
+        return
+    end
+
+    ProtocolGame.unregisterOpcode(BattlePassOpcode.Send)
+    battlePassProtocolRegistered = false
+end
+
+function BattlePass.init()
     BattlePass.window = g_ui.displayUI('battlepass')
     BattlePass.hide()
 
@@ -341,18 +369,7 @@ function BattlePass.init()
     BattlePass.loadMenu('challengesMenu')
     onCreateRewardContainers()
 
-    if modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
-        battlePassMainButton = modules.game_mainpanel.addToggleButton(
-            'battlePassButton',
-            tr('Battle Pass'),
-            '/images/game/battlepass/mainIcon1',
-            openBattlePass,
-            false,
-            1007
-        )
-    end
-
-    ProtocolGame.registerExtendedOpcode(BATTLEPASS_OPCODE, onBattlePassExtendedOpcode)
+    registerBattlePassProtocol()
 
     connect(g_game, {
         onGameStart = online,
@@ -368,20 +385,11 @@ function BattlePass.init()
 end
 
 function BattlePass.terminate()
-    destroyBattlePassBarWidget()
-
-    if battlePassMainButton and not battlePassMainButton:isDestroyed() then
-        battlePassMainButton:destroy()
-    end
-    battlePassMainButton = nil
-
     stopUnlockTimer()
 
     g_keyboard.unbindKeyPress('Tab', toggleNextWindow, BattlePass.window)
 
-    pcall(function()
-        ProtocolGame.unregisterExtendedOpcode(BATTLEPASS_OPCODE)
-    end)
+    unregisterBattlePassProtocol()
 
     disconnect(g_game, {
         onGameStart = online,
@@ -410,34 +418,182 @@ function BattlePass.terminate()
     end
 end
 
--- ============================================================
--- Extended Opcode Handler: recebe dados do Crystal Server
--- ============================================================
-onBattlePassExtendedOpcode = function(protocol, opcode, buffer)
-    local status, jsonData = pcall(json.decode, buffer)
-    if not status or not jsonData then
-        return
+local function readBool(msg)
+    return msg:getU8() ~= 0
+end
+
+local function readOutfit(msg)
+    return {
+        type = msg:getU16(),
+        head = msg:getU8(),
+        body = msg:getU8(),
+        legs = msg:getU8(),
+        feet = msg:getU8(),
+        addons = msg:getU8(),
+    }
+end
+
+local function readMission(msg)
+    return {
+        missionId = msg:getString(),
+        missionName = msg:getString(),
+        missionDescription = msg:getString(),
+        currentProgress = msg:getU32(),
+        maxProgress = msg:getU32(),
+        rewardPoints = msg:getU16(),
+    }
+end
+
+local function readMissionList(msg)
+    local missions = {}
+    local count = msg:getU16()
+    for i = 1, count do
+        missions[#missions + 1] = readMission(msg)
+    end
+    return missions
+end
+
+local function readThingValues(msg)
+    local values = {}
+    local count = msg:getU16()
+    for i = 1, count do
+        values[#values + 1] = {
+            thingId = msg:getU16(),
+            thingName = msg:getString(),
+        }
+    end
+    return values
+end
+
+local function readOutfitGroups(msg)
+    local groups = {}
+    local groupCount = msg:getU8()
+    for i = 1, groupCount do
+        local groupId = msg:getU8()
+        local outfitCount = msg:getU8()
+        local outfits = {}
+        for j = 1, outfitCount do
+            outfits[#outfits + 1] = {
+                looktype = msg:getU16(),
+                name = msg:getString(),
+            }
+        end
+        groups[groupId] = outfits
+    end
+    return groups
+end
+
+local function readRewardItems(msg)
+    local items = {}
+    local count = msg:getU16()
+    for i = 1, count do
+        items[#items + 1] = {
+            itemId = msg:getU16(),
+            count = msg:getU16(),
+            stuck = readBool(msg),
+        }
+    end
+    return items
+end
+
+local function readRewardSteps(msg)
+    local chunk = readBool(msg)
+    -- The server always writes first and total, including empty packets with chunk=false.
+    local first = msg:getU16()
+    local total = msg:getU16()
+    local stepCount = msg:getU16()
+    local steps = {}
+
+    for i = 1, stepCount do
+        local step = {
+            stepId = msg:getU16(),
+            rewards = {},
+        }
+
+        local rewardCount = msg:getU8()
+        for j = 1, rewardCount do
+            local reward = {
+                rewardId = msg:getU32(),
+                rewardType = msg:getU8(),
+                freeReward = readBool(msg),
+                itemId = msg:getU16(),
+                count = msg:getU16(),
+                charges = msg:getU16(),
+                stuck = readBool(msg),
+            }
+            local claimed = readBool(msg)
+            reward.hasClaimedReward = claimed
+            -- Legacy UI code still reads the misspelled field.
+            reward.hasClamedReward = claimed
+            reward.durationTime = msg:getU32()
+            reward.addons = msg:getU8()
+            reward.randomValues = readThingValues(msg)
+            reward.choosableValues = readThingValues(msg)
+            reward.maleOutfit = readOutfitGroups(msg)
+            reward.femaleOutfit = readOutfitGroups(msg)
+            reward.items = readRewardItems(msg)
+            step.rewards[#step.rewards + 1] = reward
+        end
+
+        steps[#steps + 1] = step
     end
 
-    local action = jsonData.action
-    local data = jsonData.data
-
-    if action == "missions" then
-        if data then
-            if BattlePass.pendingOpen then
-                BattlePass.pendingOpen = false
-                BattlePass.loadMenu('challengesMenu')
-            end
-            BattlePass.onBattlePassMissionsFromServer(data)
-        end
-    elseif action == "rewards" then
-        if data then
-            BattlePass.onBattlePassRewards(data)
-        end
+    if chunk then
+        return {
+            chunk = true,
+            first = first,
+            total = total,
+            steps = steps,
+        }
     end
+
+    return steps
+end
+
+local function parseBattlePassMissions(msg)
+    local data = {
+        playerOutfit = readOutfit(msg),
+        beginTime = msg:getU32(),
+        endTime = msg:getU32(),
+        points = msg:getU32(),
+        rerollPrice = msg:getU32(),
+        deluxePrice = msg:getU32(),
+        battlePassActive = readBool(msg),
+        currentRewardStep = msg:getU16(),
+        nextStepPoints = msg:getU32(),
+        dailyBeginTime = msg:getU32(),
+        dailyEndTime = msg:getU32(),
+        dailyMissions = readMissionList(msg),
+        generalMissions = readMissionList(msg),
+    }
+
+    if BattlePass.pendingOpen then
+        BattlePass.pendingOpen = false
+        BattlePass.loadMenu('challengesMenu')
+    end
+    BattlePass.onBattlePassMissionsFromServer(data)
+end
+
+onBattlePassMessage = function(protocol, msg)
+    local ok, err = pcall(function()
+        local response = msg:getU8()
+        if response == BattlePassResponse.Missions then
+            parseBattlePassMissions(msg)
+        elseif response == BattlePassResponse.Rewards then
+            BattlePass.onBattlePassRewards(readRewardSteps(msg))
+        elseif response == BattlePassResponse.Error then
+            displayErrorBox(tr("Battle Pass"), msg:getString())
+        end
+    end)
+    if not ok then
+        g_logger.error("[Battle Pass] Failed to parse server message: " .. tostring(err))
+    end
+    return true
 end
 
 online = function()
+    registerBattlePassProtocol()
+
     -- Load battlepass config
     BattlePass:loadConfigJson()
     BattlePass:loadPlayerPosition()
@@ -464,12 +620,6 @@ online = function()
         BattlePassRewards.claimRewardWindow = nil
     end
 
-    -- Bot estilo "Bot Helper" no painel direito (abaixo do minimapa / Bot Helper)
-    scheduleEvent(function()
-        if g_game.isOnline() then
-            createBattlePassBarWidget()
-        end
-    end, 200)
 end
 
 openBattlePass = function()
@@ -488,63 +638,9 @@ function BattlePass.onBattlePassBarClick()
     openBattlePass()
 end
 
-local function getBattlePassBarInsertIndex(mainRightPanel)
-    local children = mainRightPanel:getChildren()
-    local insertIndex = 1
-    local afterMinimap = nil
-    for i, child in ipairs(children) do
-        if child:getId() == 'minimapWindow' then
-            afterMinimap = i
-            break
-        end
-    end
-    if afterMinimap then
-        insertIndex = afterMinimap + 1
-        if modules.game_helper and modules.game_helper.getBTCHelperWidget then
-            local btc = modules.game_helper.getBTCHelperWidget()
-            if btc and btc:getParent() == mainRightPanel then
-                for i = insertIndex, #children do
-                    if children[i] == btc then
-                        insertIndex = i + 1
-                        break
-                    end
-                end
-            end
-        end
-    end
-    return insertIndex
-end
-
-createBattlePassBarWidget = function()
-    if battlePassBarWidget then
-        return
-    end
-
-    local mainRightPanel = getBattlePassSidePanel()
-    if not mainRightPanel then
-        return
-    end
-
-    battlePassBarWidget = g_ui.createWidget('BattlePassBarWidget')
-    if not battlePassBarWidget then
-        return
-    end
-
-    mainRightPanel:insertChild(getBattlePassBarInsertIndex(mainRightPanel), battlePassBarWidget)
-
-    fitBattlePassSidePanel(mainRightPanel)
-end
-
-destroyBattlePassBarWidget = function()
-    if battlePassBarWidget then
-        local mainRightPanel = battlePassBarWidget:getParent() or getBattlePassSidePanel()
-        battlePassBarWidget:destroy()
-        battlePassBarWidget = nil
-        fitBattlePassSidePanel(mainRightPanel)
-    end
-end
-
 offline = function()
+    unregisterBattlePassProtocol()
+
     BattlePass.hide()
     BattlePass.lastRewardStep = BattlePass.currentRewardStep
     BattlePass.lastCameraPosition = getRewardPosition(BattlePass.currentRewardStep).scrollPosition
@@ -567,8 +663,6 @@ offline = function()
         BattlePass.dailyRerollWindow = nil
     end
 
-    destroyBattlePassBarWidget()
-    setBattlePassMainButtonOn(false)
 end
 
 function BattlePass:showBattlePass()
@@ -583,7 +677,6 @@ function BattlePass.show()
     g_keyboard.unbindKeyPress('Tab', toggleNextWindow, BattlePass.window)
     g_keyboard.bindKeyPress('Tab', toggleNextWindow, BattlePass.window)
     updateGoldBalance()
-    setBattlePassMainButtonOn(true)
 end
 
 function BattlePass.hide()
@@ -595,7 +688,6 @@ function BattlePass.hide()
     g_keyboard.unbindKeyPress('Tab', toggleNextWindow, BattlePass.window)
     stopUnlockTimer()
     stopPendingRewardsSchedule()
-    setBattlePassMainButtonOn(false)
 end
 
 onCreateRewardContainers = function()
@@ -1149,8 +1241,6 @@ function BattlePass:saveConfigJson()
     if result:len() > 100 * 1024 * 1024 then
         return g_logger.error("Something went wrong, file is above 100MB, won't be saved")
     end
-    g_resources.makeDir("/characterdata")
-    g_resources.makeDir("/characterdata/" .. loadedPlayerId)
     g_resources.writeFileContents(file, result)
 end
 
@@ -1186,8 +1276,8 @@ function BattlePass:rerollDailyMission(data)
     }, okButton, cancelButton)
 end
 
-onResourceBalance = function(balance, oldBalance, resourceType)
-    if resourceType and resourceType ~= ResourceTypes.BANK_BALANCE and resourceType ~= ResourceTypes.GOLD_EQUIPPED then
+onResourceBalance = function(resourceType)
+    if resourceType and resourceType ~= ResourceBank and resourceType ~= ResourceInventary then
         return
     end
 
