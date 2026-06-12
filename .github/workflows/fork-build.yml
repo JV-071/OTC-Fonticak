@@ -95,19 +95,6 @@ jobs:
         shell: pwsh
         run: Remove-Item -Recurse -Force C:\mysql* -ErrorAction SilentlyContinue
 
-      # O CMakePresets.json passa --binarysource=files,$VCPKG_ROOT/binary-cache
-      # na linha de comando do vcpkg (sobrepõe env vars) — o cache TEM que
-      # apontar para essa pasta. O save roda mesmo em falha, então as deps
-      # sobrevivem a erro de compile.
-      - name: Restore vcpkg binary cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ github.workspace }}/vcpkg/binary-cache
-          key: vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
-          restore-keys: |
-            vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-
-            vcpkg-bincache-windows-
-
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.6
 
@@ -128,6 +115,20 @@ jobs:
         with:
           vcpkgGitURL: "https://github.com/microsoft/vcpkg.git"
           vcpkgGitCommitId: ${{ env.VCPKG_GIT_COMMIT_ID }}
+
+      # O CMakePresets.json passa --binarysource=files,$VCPKG_ROOT/binary-cache
+      # na linha de comando do vcpkg (sobrepõe env vars) — o cache TEM que
+      # apontar para essa pasta. E TEM que ser restaurado DEPOIS do Setup
+      # vcpkg: o run-vcpkg recria a pasta vcpkg/ ao clonar e apagaria o
+      # conteúdo restaurado (runs 6-7 recompilaram tudo por isso).
+      - name: Restore vcpkg binary cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg/binary-cache
+          key: vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-bincache-windows-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-bincache-windows-
 
       - name: Run CMake
         uses: lukka/run-cmake@v10
