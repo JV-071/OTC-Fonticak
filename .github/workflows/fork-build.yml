@@ -1,9 +1,11 @@
-## Workflow do fork (JV-071): builda SÓ o Windows CMake Release.
-## O ci.yml do upstream dispara 13 jobs (Linux x2, Windows x4, macOS, Android,
-## Docker, Browser) — aqui só precisamos do artefato windows-cmake-release.
-## Cache: vcpkg binário via NuGet (GitHub Packages, secret VCPKG_PACKAGES_TOKEN)
-## + sccache para os objetos. Com cache quente o build fica na casa de minutos.
-name: Fork Build (Windows CMake Release)
+## Workflow do fork (JV-071).
+## - Em todo push: builda o Windows CMake Release (o artefato do dia a dia),
+##   rápido graças ao cache binário do vcpkg (NuGet/GitHub Packages, secret
+##   VCPKG_PACKAGES_TOKEN) + sccache.
+## - Em workflow_dispatch ou push na main: builda também todas as outras
+##   plataformas (Linux, macOS, Android, Browser, Docker) reaproveitando os
+##   reusables do upstream, que já têm cache próprio por plataforma.
+name: Fork Build
 
 on:
   workflow_dispatch:
@@ -26,6 +28,53 @@ permissions:
   packages: write
 
 jobs:
+  build-linux:
+    name: Build - Linux
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/reusable-build-linux.yml
+    secrets: inherit
+
+  build-macos:
+    name: Build - macOS
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/reusable-build-macos.yml
+    secrets: inherit
+
+  build-android-apk:
+    name: Build - Android APK
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/reusable-build-android-apk.yml
+    secrets: inherit
+
+  build-browser:
+    name: Build - Browser
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-build-browser.yml
+    secrets: inherit
+
+  build-docker:
+    name: Build - Docker
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/reusable-build-docker.yml
+    with:
+      push: false
+      vcpkg_binary_cache_access: read
+    secrets: inherit
+
   build:
     name: Compile (CMake Release)
     runs-on: windows-2025
