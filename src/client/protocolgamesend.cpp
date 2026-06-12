@@ -25,7 +25,7 @@
 #include "game.h"
 #include "item.h"
 #include "protocolgame.h"
-#include <framework/core/application.h>
+#include "framework/core/graphicalapplication.h"
 #include <framework/stdext/string.h>
 #include "framework/net/outputmessage.h"
 #include "protocolcodes.h"
