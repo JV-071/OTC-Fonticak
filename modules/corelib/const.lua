@@ -53,14 +53,18 @@ MouseMidButton               = 3
 -- collide with keyboard key codes (KeyBackspace = 3, etc.). They are therefore
 -- remapped to dedicated key codes (outside the keyboard range) so they can be
 -- used and stored as regular hotkeys ("MB3"/"MB4"/"MB5").
+Mouse1Button                 = 259
+Mouse2Button                 = 260
 Mouse3Button                 = 258
 Mouse4Button                 = 256
 Mouse5Button                 = 257
 
 -- Maps a raw mouse button from the engine to the canonical button code used
--- by the hotkey system (left/right pass through unchanged).
+-- by the hotkey system.
 function translateMouseButton(button)
-  if button == 3 then return Mouse3Button
+  if button == MouseLeftButton or button == 1 then return Mouse1Button
+  elseif button == MouseRightButton or button == 2 then return Mouse2Button
+  elseif button == 3 or button == MouseMidButton then return Mouse3Button
   elseif button == 4 then return Mouse4Button
   elseif button == 5 then return Mouse5Button
   else return button end
@@ -332,6 +336,8 @@ KeyCodeDescs                 = {
     [KeyNumpad7] = 'Numpad7',
     [KeyNumpad8] = 'Numpad8',
     [KeyNumpad9] = 'Numpad9',
+    [Mouse1Button] = 'MB1',
+    [Mouse2Button] = 'MB2',
     [Mouse3Button] = 'MB3',
     [Mouse4Button] = 'MB4',
     [Mouse5Button] = 'MB5'

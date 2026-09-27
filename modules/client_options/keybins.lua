@@ -162,6 +162,39 @@ end
 
 -- Applies a captured combo (keyboard or mouse) to the keybind edit window
 -- and runs the conflict checks.
+local function disconnectKeyEditListeners()
+    disconnect(keyEditWindow, {
+        onKeyDown = editKeybindKeyDown
+    })
+    disconnect(keyEditWindow, {
+        onMousePress = editKeybindMouse
+    })
+end
+
+local function isKeyEditAssignMousePos(widget, mousePos)
+    if not widget or not mousePos then
+        return false
+    end
+
+    local clickedWidget = widget:recursiveGetChildByPos(mousePos, false)
+    if not clickedWidget then
+        return true
+    end
+
+    local current = clickedWidget
+    while current and current ~= widget do
+        if current.getClassName then
+            local className = current:getClassName()
+            if className == 'UIButton' or className == 'UICheckBox' or className == 'UIComboBox' then
+                return false
+            end
+        end
+        current = current:getParent()
+    end
+
+    return true
+end
+
 function editKeybindSetCombo(keyCombo)
     setKeyComboText(keyCombo)
 
@@ -180,7 +213,11 @@ function editKeybindKeyDown(widget, keyCode, keyboardModifiers)
 end
 
 function editKeybindMouse(widget, mousePos, button)
-    local keyCombo = Keybind.getMouseKeyCombo(button)
+    if not isKeyEditAssignMousePos(widget, mousePos) then
+        return false
+    end
+
+    local keyCombo = Keybind.getMouseKeyCombo(button, g_keyboard.getModifiers())
     if not keyCombo then
         return false
     end
@@ -190,12 +227,7 @@ end
 
 function editKeybind(keybind)
     keyEditWindow.buttons.cancel.onClick = function()
-        disconnect(keyEditWindow, {
-            onKeyDown = editKeybindKeyDown
-        })
-        disconnect(keyEditWindow, {
-            onMousePress = editKeybindMouse
-        })
+        disconnectKeyEditListeners()
         keyEditWindow:hide()
         keyEditWindow:ungrabKeyboard()
         show()
@@ -254,9 +286,7 @@ function editKeybindPrimary(button)
             keyCombo = keyCombo
         }
 
-        disconnect(keyEditWindow, {
-            onKeyDown = editKeybindKeyDown
-        })
+        disconnectKeyEditListeners()
         keyEditWindow:hide()
         keyEditWindow:ungrabKeyboard()
         show()
@@ -278,9 +308,7 @@ function editKeybindPrimary(button)
 
         column:setText('')
 
-        disconnect(keyEditWindow, {
-            onKeyDown = editKeybindKeyDown
-        })
+        disconnectKeyEditListeners()
         keyEditWindow:hide()
         keyEditWindow:ungrabKeyboard()
         show()
@@ -322,9 +350,7 @@ function editKeybindSecondary(button)
             keyCombo = keyCombo
         }
 
-        disconnect(keyEditWindow, {
-            onKeyDown = editKeybindKeyDown
-        })
+        disconnectKeyEditListeners()
         keyEditWindow:hide()
         keyEditWindow:ungrabKeyboard()
         show()
@@ -346,9 +372,7 @@ function editKeybindSecondary(button)
 
         column:setText('')
 
-        disconnect(keyEditWindow, {
-            onKeyDown = editKeybindKeyDown
-        })
+        disconnectKeyEditListeners()
         keyEditWindow:hide()
         keyEditWindow:ungrabKeyboard()
         show()
@@ -417,13 +441,13 @@ function addKeybind(category, action, primary, secondary)
         style = 'VerticalSeparator'
     }, {
         style = 'EditableKeybindsTableColumn',
-        text = primary,
+        text = Keybind.formatKeyComboForDisplay(primary),
         width = 100
     }, {
         style = 'VerticalSeparator'
     }, {
         style = 'EditableKeybindsTableColumn',
-        text = secondary,
+        text = Keybind.formatKeyComboForDisplay(secondary),
         width = 90
     } })
 

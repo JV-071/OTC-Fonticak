@@ -1391,11 +1391,17 @@ function createThingMenu(menuPosition, lookThing, useThing, creatureThing)
 
         local lootExists = quickLoot.lootExists(lookThing:getId())
         local optionText = lootExists and "Remove from" or "Add to"
-        local actionFunction = lootExists and quickLoot.removeLootList or quickLoot.addLootList
 
-        menu.addOption(menu, tr(optionText .. " loot list"), function()
-            actionFunction(lookThing:getId())
-        end)
+        local lootListShortcut = modules.game_quickloot and modules.game_quickloot.QuickLoot.getToggleLootListHotkeyLabel()
+        menu:addOption(tr(optionText .. " loot list"), function()
+            if lootExists then
+                quickLoot.removeLootList(lookThing:getId())
+                quickLoot.showLootListPulseVisual(lookThing, false)
+            else
+                quickLoot.addLootList(lookThing:getId())
+                quickLoot.showLootListPulseVisual(lookThing, true)
+            end
+        end, lootListShortcut)
     end
 
     if g_game.getClientVersion() >= 1410 then
@@ -1493,6 +1499,11 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
             createThingMenu(menuPosition, lookThing, useThing, creatureThing)
             return true
         end
+    end
+
+    if modules.game_quickloot and modules.game_quickloot.QuickLoot.isToggleLootListHotkey(mouseButton, keyboardModifiers) then
+        modules.game_quickloot.QuickLoot.toggleLootListAt(lookThing, useThing)
+        return true
     end
 
     -- Leftover left release after a look combo (or fast dual-release race).
@@ -1711,8 +1722,7 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
         if keyboardModifiers == KeyboardNoModifier and mouseButton == MouseRightButton then
             createThingMenu(menuPosition, lookThing, useThing, creatureThing)
             return true
-        elseif lookThing and keyboardModifiers == KeyboardShiftModifier and
-            (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
+        elseif lookThing and keyboardModifiers == KeyboardShiftModifier and mouseButton == MouseLeftButton then
             g_game.look(lookThing)
             return true
         elseif useThing and keyboardModifiers == KeyboardCtrlModifier and
@@ -1997,8 +2007,7 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
             (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
             g_game.open(useThing)
             return true
-        elseif lookThing and keyboardModifiers == KeyboardShiftModifier and
-            (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
+        elseif lookThing and keyboardModifiers == KeyboardShiftModifier and mouseButton == MouseLeftButton then
             g_game.look(lookThing)
             return true
         elseif useThing and keyboardModifiers == KeyboardCtrlModifier and

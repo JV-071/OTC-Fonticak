@@ -1,4 +1,281 @@
 QuickLoot = {}
+QuickLoot.TOGGLE_LOOT_LIST_ACTION = 'Toggle Loot List Item'
+
+local function pickQuickLootListItem(lookThing, useThing)
+    if lookThing and not lookThing:isCreature() and lookThing:isPickupable() then
+        return lookThing
+    end
+    if useThing and not useThing:isCreature() and useThing:isPickupable() then
+        return useThing
+    end
+    return nil
+end
+
+function QuickLoot.isToggleLootListHotkey(mouseButton, keyboardModifiers)
+    return Keybind.matchesActionMouseInput('Loot', QuickLoot.TOGGLE_LOOT_LIST_ACTION, mouseButton, keyboardModifiers)
+end
+
+function QuickLoot.getToggleLootListHotkeyLabel()
+    if g_platform.isMobile() then
+        return nil
+    end
+
+    local keys = Keybind.getKeybindKeys('Loot', QuickLoot.TOGGLE_LOOT_LIST_ACTION)
+    if keys.primary and keys.primary ~= '' then
+        return '(' .. Keybind.formatKeyComboForDisplay(keys.primary) .. ')'
+    end
+
+    return nil
+end
+
+function QuickLoot.resolveGameMapThings(mapWidget, mousePos)
+    if not mapWidget or not mousePos then
+        return nil, nil
+    end
+
+    local autoWalkPos = mapWidget:getPosition(mousePos)
+    if not autoWalkPos then
+        return nil, nil
+    end
+
+    local positionOffset = mapWidget:getPositionOffset(mousePos)
+    local localPlayer = g_game.getLocalPlayer()
+    local localPlayerPos = localPlayer and localPlayer:getPosition()
+    if localPlayerPos and autoWalkPos.z ~= localPlayerPos.z then
+        local dz = autoWalkPos.z - localPlayerPos.z
+        autoWalkPos.x = autoWalkPos.x + dz
+        autoWalkPos.y = autoWalkPos.y + dz
+        autoWalkPos.z = localPlayerPos.z
+    end
+
+    local lookThing
+    local useThing
+    local tile = mapWidget:getTile(mousePos)
+    if tile then
+        lookThing = tile:getTopLookThingEx(positionOffset)
+        useThing = tile:getTopUseThing()
+    end
+
+    local autoWalkTile = g_map.getTile(autoWalkPos)
+    if useThing and autoWalkTile and localPlayerPos and useThing:getPosition().z ~= localPlayerPos.z then
+        local autoUseThing = autoWalkTile:getTopUseThing()
+        if autoUseThing then
+            useThing = autoUseThing
+        end
+    end
+
+    if lookThing and autoWalkTile and localPlayerPos and lookThing:getPosition().z ~= localPlayerPos.z then
+        local autoLookThing = autoWalkTile:getTopLookThingEx(positionOffset)
+        if autoLookThing and (not tile or not tile:isWalkable() or not autoLookThing:isGround()) then
+            lookThing = autoLookThing
+        end
+    end
+
+    return lookThing, useThing
+end
+
+function QuickLoot.resolveMouseTargetThings()
+    if not g_game.isOnline() or not modules.game_interface then
+        return nil, nil
+    end
+
+    local mousePos = g_window.getMousePosition()
+    local rootPanel = modules.game_interface.getRootPanel()
+    if not rootPanel then
+        return nil, nil
+    end
+
+    local clickedWidget = rootPanel:recursiveGetChildByPos(mousePos, false)
+    if clickedWidget then
+        if clickedWidget:getClassName() == 'UIItem' and not clickedWidget:isVirtual() then
+            local item = clickedWidget:getItem()
+            if item then
+                return item, item
+            end
+        elseif clickedWidget:getClassName() == 'UIGameMap' then
+            return QuickLoot.resolveGameMapThings(clickedWidget, mousePos)
+        end
+    end
+
+    local map = modules.game_interface.getMapPanel()
+    if map and map.containsPoint and map:containsPoint(mousePos) then
+        return QuickLoot.resolveGameMapThings(map, mousePos)
+    end
+
+    return nil, nil
+end
+
+local LOOT_LIST_PULSE_HOLD_MS = 150
+local LOOT_LIST_PULSE_FADE_MS = 450
+local LOOT_LIST_PULSE_TICK_MS = 33
+local LOOT_LIST_PULSE_TOTAL_MS = LOOT_LIST_PULSE_HOLD_MS + LOOT_LIST_PULSE_FADE_MS
+local LOOT_LIST_PULSE_MARK_CLEAR = '#ffffffff'
+local LOOT_LIST_PULSE_ADD_RGB = { 255, 255, 255 }
+local LOOT_LIST_PULSE_REMOVE_RGB = { 255, 70, 70 }
+
+local function easeOutCubic(t)
+    t = math.max(0, math.min(1, t))
+    local f = t - 1
+    return f * f * f + 1
+end
+
+local function lootListPulseOpacity(elapsed)
+    if elapsed >= LOOT_LIST_PULSE_TOTAL_MS then
+        return nil
+    end
+    if elapsed > LOOT_LIST_PULSE_HOLD_MS then
+        return 1 - easeOutCubic((elapsed - LOOT_LIST_PULSE_HOLD_MS) / LOOT_LIST_PULSE_FADE_MS)
+    end
+    local phase = elapsed / LOOT_LIST_PULSE_HOLD_MS
+    return 0.88 + 0.12 * math.sin(phase * math.pi)
+end
+
+local function lootListPulseColor(isAdd, opacity)
+    local r, g, b
+    if isAdd then
+        r, g, b = LOOT_LIST_PULSE_ADD_RGB[1], LOOT_LIST_PULSE_ADD_RGB[2], LOOT_LIST_PULSE_ADD_RGB[3]
+    else
+        r, g, b = LOOT_LIST_PULSE_REMOVE_RGB[1], LOOT_LIST_PULSE_REMOVE_RGB[2], LOOT_LIST_PULSE_REMOVE_RGB[3]
+    end
+    return string.format('#%02x%02x%02x%02x', r, g, b, math.floor(255 * opacity))
+end
+
+local function clearLootListPulseEvent(host)
+    if host.lootListPulseEvent then
+        removeEvent(host.lootListPulseEvent)
+        host.lootListPulseEvent = nil
+    end
+end
+
+local function runLootListPulse(host, applyOpacity, onFinish)
+    clearLootListPulseEvent(host)
+    local startedAt = g_clock.millis()
+
+    local function tick()
+        if host.isDestroyed and host:isDestroyed() then
+            onFinish()
+            return
+        end
+
+        local opacity = lootListPulseOpacity(g_clock.millis() - startedAt)
+        if not opacity then
+            onFinish()
+            return
+        end
+
+        applyOpacity(opacity)
+        host.lootListPulseEvent = scheduleEvent(tick, LOOT_LIST_PULSE_TICK_MS)
+    end
+
+    tick()
+end
+
+local function stopLootListPulseUi(widget)
+    if not widget then
+        return
+    end
+    clearLootListPulseEvent(widget)
+    widget:setBorderWidth(0)
+    widget:setBorderColor('alpha')
+end
+
+local function pulseLootListUiItem(widget, isAdd)
+    if not widget or widget:isDestroyed() then
+        return
+    end
+
+    stopLootListPulseUi(widget)
+    widget:setBorderWidth(2)
+
+    runLootListPulse(widget, function(opacity)
+        widget:setBorderColor(lootListPulseColor(isAdd, opacity))
+    end, function()
+        stopLootListPulseUi(widget)
+    end)
+end
+
+local function stopLootListPulseWorld(item)
+    if not item then
+        return
+    end
+    clearLootListPulseEvent(item)
+    if item.setMarked then
+        item:setMarked(LOOT_LIST_PULSE_MARK_CLEAR)
+    end
+end
+
+local function pulseLootListWorldItem(item, isAdd)
+    if not item or not item.setMarked then
+        return
+    end
+
+    stopLootListPulseWorld(item)
+
+    runLootListPulse(item, function(opacity)
+        item:setMarked(lootListPulseColor(isAdd, opacity))
+    end, function()
+        stopLootListPulseWorld(item)
+    end)
+end
+
+local function findUiItemWidget(root, item)
+    if not root or root:isDestroyed() then
+        return nil
+    end
+
+    if root:getClassName() == 'UIItem' and not root:isVirtual() and root:getItem() == item then
+        return root
+    end
+
+    for _, child in ipairs(root:getChildren()) do
+        local found = findUiItemWidget(child, item)
+        if found then
+            return found
+        end
+    end
+
+    return nil
+end
+
+-- isAdd: true = white pulse (added), false = red pulse (removed)
+function QuickLoot.showLootListPulseVisual(item, isAdd)
+    if not item or not item.isItem or not item:isItem() then
+        return
+    end
+
+    local root = modules.game_interface and modules.game_interface.getRootPanel()
+    local widget = root and findUiItemWidget(root, item)
+    if widget then
+        pulseLootListUiItem(widget, isAdd)
+    else
+        pulseLootListWorldItem(item, isAdd)
+    end
+end
+
+function QuickLoot.toggleLootListAt(lookThing, useThing)
+    if not g_game.isQuickLootEnabled() or not modules.game_quickloot then
+        return
+    end
+
+    local item = pickQuickLootListItem(lookThing, useThing)
+    if not item then
+        return
+    end
+
+    local itemId = item:getId()
+    if QuickLoot.lootExists(itemId) then
+        QuickLoot.removeLootList(itemId)
+        QuickLoot.showLootListPulseVisual(item, false)
+    else
+        QuickLoot.addLootList(itemId)
+        QuickLoot.showLootListPulseVisual(item, true)
+    end
+end
+
+function QuickLoot.toggleLootListUnderMouse()
+    local lookThing, useThing = QuickLoot.resolveMouseTargetThings()
+    QuickLoot.toggleLootListAt(lookThing, useThing)
+end
 
 local function showModal(widget)
     if g_modalManager then
@@ -561,10 +838,23 @@ function quickLootController:onInit()
             end
         }
     })
+    Keybind.new("Loot", QuickLoot.TOGGLE_LOOT_LIST_ACTION, "Shift+MB2", "")
+    Keybind.bind("Loot", QuickLoot.TOGGLE_LOOT_LIST_ACTION, {
+        {
+            type = KEY_DOWN,
+            callback = function()
+                if not g_game.isOnline() then
+                    return
+                end
+                QuickLoot.toggleLootListUnderMouse()
+            end,
+        }
+    })
     g_game.openContainerQuickLoot(3, nil, {}, nil, nil, true)
 end
 
 function quickLootController:onTerminate()
+    Keybind.delete("Loot", QuickLoot.TOGGLE_LOOT_LIST_ACTION)
     Keybind.delete("Loot", "Quick Loot Nearby Corpses")
 
     if QuickLoot.mouseGrabberWidget then

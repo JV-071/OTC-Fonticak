@@ -192,7 +192,18 @@ local function editCustomHotkeyKey(row, secondary)
   end
 
   local function rowCaptureMouse(assignWindow, mousePos, button)
-    local keyCombo = Keybind.getMouseKeyCombo(button)
+    local clickedWidget = assignWindow:recursiveGetChildByPos(mousePos, false)
+    if clickedWidget then
+      local current = clickedWidget
+      while current and current ~= assignWindow do
+        if current.getClassName and current:getClassName() == 'UIButton' then
+          return false
+        end
+        current = current:getParent()
+      end
+    end
+
+    local keyCombo = Keybind.getMouseKeyCombo(button, g_keyboard.getModifiers())
     if not keyCombo then
       return false
     end

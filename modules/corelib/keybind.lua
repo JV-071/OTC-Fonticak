@@ -271,39 +271,39 @@ function Keybind.bind(category, action, callbacks, widget)
     if callback.type == KEY_UP then
       if keys.primary then
         keys.primary = tostring(keys.primary)
-        if keys.primary:len() > 0 then
+        if keys.primary:len() > 0 and not Keybind.isMouseKeyCombo(keys.primary) then
           g_keyboard.bindKeyUp(keys.primary, callback.callback, keybind.widget, callback.alone)
         end
       end
       if keys.secondary then
         keys.secondary = tostring(keys.secondary)
-        if keys.secondary:len() > 0 then
+        if keys.secondary:len() > 0 and not Keybind.isMouseKeyCombo(keys.secondary) then
           g_keyboard.bindKeyUp(keys.secondary, callback.callback, keybind.widget, callback.alone)
         end
       end
     elseif callback.type == KEY_DOWN then
       if keys.primary then
         keys.primary = tostring(keys.primary)
-        if keys.primary:len() > 0 then
+        if keys.primary:len() > 0 and not Keybind.isMouseKeyCombo(keys.primary) then
           g_keyboard.bindKeyDown(keys.primary, callback.callback, keybind.widget, callback.alone)
         end
       end
       if keys.secondary then
         keys.secondary = tostring(keys.secondary)
-        if keys.secondary:len() > 0 then
+        if keys.secondary:len() > 0 and not Keybind.isMouseKeyCombo(keys.secondary) then
           g_keyboard.bindKeyDown(keys.secondary, callback.callback, keybind.widget, callback.alone)
         end
       end
     elseif callback.type == KEY_PRESS then
       if keys.primary then
         keys.primary = tostring(keys.primary)
-        if keys.primary:len() > 0 then
+        if keys.primary:len() > 0 and not Keybind.isMouseKeyCombo(keys.primary) then
           g_keyboard.bindKeyPress(keys.primary, callback.callback, keybind.widget)
         end
       end
       if keys.secondary then
         keys.secondary = tostring(keys.secondary)
-        if keys.secondary:len() > 0 then
+        if keys.secondary:len() > 0 and not Keybind.isMouseKeyCombo(keys.secondary) then
           g_keyboard.bindKeyPress(keys.secondary, callback.callback, keybind.widget)
         end
       end
@@ -325,39 +325,39 @@ function Keybind.unbind(category, action)
     if callback.type == KEY_UP then
       if keys.primary then
         keys.primary = tostring(keys.primary)
-        if keys.primary:len() > 0 then
+        if keys.primary:len() > 0 and not Keybind.isMouseKeyCombo(keys.primary) then
           g_keyboard.unbindKeyUp(keys.primary, callback.callback, keybind.widget)
         end
       end
       if keys.secondary then
         keys.secondary = tostring(keys.secondary)
-        if keys.secondary:len() > 0 then
+        if keys.secondary:len() > 0 and not Keybind.isMouseKeyCombo(keys.secondary) then
           g_keyboard.unbindKeyUp(keys.secondary, callback.callback, keybind.widget)
         end
       end
     elseif callback.type == KEY_DOWN then
       if keys.primary then
         keys.primary = tostring(keys.primary)
-        if keys.primary:len() > 0 then
+        if keys.primary:len() > 0 and not Keybind.isMouseKeyCombo(keys.primary) then
           g_keyboard.unbindKeyDown(keys.primary, callback.callback, keybind.widget)
         end
       end
       if keys.secondary then
         keys.secondary = tostring(keys.secondary)
-        if keys.secondary:len() > 0 then
+        if keys.secondary:len() > 0 and not Keybind.isMouseKeyCombo(keys.secondary) then
           g_keyboard.unbindKeyDown(keys.secondary, callback.callback, keybind.widget)
         end
       end
     elseif callback.type == KEY_PRESS then
       if keys.primary then
         keys.primary = tostring(keys.primary)
-        if keys.primary:len() > 0 then
+        if keys.primary:len() > 0 and not Keybind.isMouseKeyCombo(keys.primary) then
           g_keyboard.unbindKeyPress(keys.primary, callback.callback, keybind.widget)
         end
       end
       if keys.secondary then
         keys.secondary = tostring(keys.secondary)
-        if keys.secondary:len() > 0 then
+        if keys.secondary:len() > 0 and not Keybind.isMouseKeyCombo(keys.secondary) then
           g_keyboard.unbindKeyPress(keys.secondary, callback.callback, keybind.widget)
         end
       end
@@ -947,36 +947,88 @@ function Keybind.hotkeyCallback(hotkeyId, chatMode)
 end
 
 -- ====================================================================
--- Mouse button hotkeys (MB3 / MB4 / MB5)
---
--- The engine reports the middle/wheel click as raw mouse button 3 and the
--- side buttons as 4/5; const.lua remaps them to Mouse3Button/Mouse4Button/
--- Mouse5Button key codes so they can live in the same combo space as keyboard
--- keys. This section exposes them as "MB3"/"MB4"/"MB5" combos and routes
--- their presses to the bound callbacks.
+-- Mouse button hotkeys (MB1–MB5)
 -- ====================================================================
 
 local MOUSE_KEY_CODES = {
+  MB1 = Mouse1Button,
+  MB2 = Mouse2Button,
   MB3 = Mouse3Button,
   MB4 = Mouse4Button,
   MB5 = Mouse5Button
 }
 
--- Returns true when keyCombo is a mouse-button combo ("MB3"/"MB4"/"MB5").
+-- Returns true when keyCombo is an unmodified side/middle mouse hotkey.
 function Keybind.isMouseKey(keyCombo)
   return keyCombo ~= nil and MOUSE_KEY_CODES[keyCombo] ~= nil
 end
 
--- Maps a raw mouse button (3/4/5) to its combo ("MB3"/"MB4"/"MB5"), or nil
--- when it is not a bindable mouse hotkey.
-function Keybind.getMouseKeyCombo(rawButton)
-  local button = translateMouseButton(rawButton)
-  for combo, code in pairs(MOUSE_KEY_CODES) do
-    if button == code then
-      return combo
+function Keybind.isMouseKeyCombo(keyCombo)
+  if not keyCombo or keyCombo == '' then
+    return false
+  end
+
+  for _, part in ipairs(tostring(keyCombo):split('+')) do
+    if MOUSE_KEY_CODES[part:trim()] then
+      return true
     end
   end
-  return nil
+
+  return false
+end
+
+function Keybind.getMouseKeyCombo(rawButton, keyboardModifiers)
+  local button = translateMouseButton(rawButton)
+  local keyCode = nil
+
+  for _, code in pairs(MOUSE_KEY_CODES) do
+    if button == code then
+      keyCode = code
+      break
+    end
+  end
+
+  if not keyCode then
+    return nil
+  end
+
+  if keyboardModifiers == nil then
+    for combo, code in pairs(MOUSE_KEY_CODES) do
+      if code == keyCode and (code == Mouse3Button or code == Mouse4Button or code == Mouse5Button) then
+        return combo
+      end
+    end
+    keyboardModifiers = KeyboardNoModifier
+  end
+
+  return determineKeyComboDesc(keyCode, keyboardModifiers)
+end
+
+function Keybind.matchesMouseKeyCombo(keyCombo, mouseButton, keyboardModifiers)
+  if not keyCombo or keyCombo == '' then
+    return false
+  end
+
+  local actual = Keybind.getMouseKeyCombo(mouseButton, keyboardModifiers or KeyboardNoModifier)
+  return actual == keyCombo
+end
+
+function Keybind.matchesActionMouseInput(category, action, mouseButton, keyboardModifiers, chatMode, preset)
+  local keys = Keybind.getKeybindKeys(category, action, chatMode, preset)
+  return Keybind.matchesMouseKeyCombo(keys.primary, mouseButton, keyboardModifiers)
+      or Keybind.matchesMouseKeyCombo(keys.secondary, mouseButton, keyboardModifiers)
+end
+
+function Keybind.formatKeyComboForDisplay(keyCombo)
+  if not keyCombo or keyCombo == '' then
+    return keyCombo
+  end
+
+  local text = tostring(keyCombo)
+  text = text:gsub('MB2', 'Right')
+  text = text:gsub('MB1', 'Left')
+  text = text:gsub('MB3', 'Middle')
+  return text
 end
 
 local function mouseKeyPressHandler(self, mousePos, rawButton)
@@ -1022,8 +1074,10 @@ local function isKeyDownAction(action)
 end
 
 local function bindHotkeyKey(keyCombo, action, callback, widget)
-  if Keybind.isMouseKey(keyCombo) then
-    Keybind.bindMouseButtonKey(keyCombo, callback, widget)
+  if Keybind.isMouseKeyCombo(keyCombo) then
+    if Keybind.isMouseKey(keyCombo) then
+      Keybind.bindMouseButtonKey(keyCombo, callback, widget)
+    end
   elseif isKeyDownAction(action) then
     g_keyboard.bindKeyDown(keyCombo, callback, widget)
   else
@@ -1032,8 +1086,10 @@ local function bindHotkeyKey(keyCombo, action, callback, widget)
 end
 
 local function unbindHotkeyKey(keyCombo, action, callback, widget)
-  if Keybind.isMouseKey(keyCombo) then
-    Keybind.unbindMouseButtonKey(keyCombo, widget)
+  if Keybind.isMouseKeyCombo(keyCombo) then
+    if Keybind.isMouseKey(keyCombo) then
+      Keybind.unbindMouseButtonKey(keyCombo, widget)
+    end
   elseif isKeyDownAction(action) then
     g_keyboard.unbindKeyDown(keyCombo, callback, widget)
   else

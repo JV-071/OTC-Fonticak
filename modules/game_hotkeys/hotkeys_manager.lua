@@ -418,7 +418,7 @@ function addHotkey()
     comboLabel.keyCombo = ''
     assignWindow.onKeyDown = hotkeyCapture
     assignWindow.onMousePress = function(window, mousePos, button)
-        local keyCombo = Keybind.getMouseKeyCombo(button)
+        local keyCombo = Keybind.getMouseKeyCombo(button, g_keyboard.getModifiers())
         if not keyCombo then
             return false
         end
